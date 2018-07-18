@@ -1,0 +1,12 @@
+[package]
+name = "multimesh"
+version = "0.1.0"
+authors = ["Leo Schwarz <mail@leoschwarz.com>"]
+
+[dependencies]
+decorum = "0.0.10"
+failure = "0.1"
+lazy_static = "1.0"
+nalgebra = "0.15"
+regex = "1.0"
+typenum = "1.10"
