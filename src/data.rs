@@ -1,7 +1,8 @@
-use nalgebra::{DVector, MatrixArray, Vector2, Vector3};
+use nalgebra::{DVector, DMatrix, MatrixArray, Vector2, Vector3};
 use std::collections::BTreeMap;
 use std::any::Any;
 
+/*
 // TODO: extract to crate (if the other todo can be fixed)
 mod storage {
     use std::collections::BTreeMap;
@@ -53,7 +54,11 @@ mod storage {
     }
 
 }
+*/
 
+/// The name of an attribute.
+///
+/// Some formats use indexed 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum AttrName {
     Index(usize),
@@ -72,13 +77,16 @@ impl From<String> for AttrName {
     }
 }
 
-pub struct NodeAttr {
+/// Attributes of nodes or elements.
+#[derive(Clone, Debug)]
+pub struct Attr {
     values: BTreeMap<AttrName, f64>,
 }
 
-impl NodeAttr {
+impl Attr {
+    /// Create a new and empty attr instance.
     pub fn new() -> Self {
-        NodeAttr {
+        Attr {
             values: BTreeMap::new()
         }
     }
@@ -86,10 +94,15 @@ impl NodeAttr {
     pub fn insert<N: Into<AttrName>>(&mut self, name: N, value: f64) {
         self.values.insert(name.into(), value);
     }
+
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    // TODO: implement all nescessary methods.
 }
 
-pub struct ElementAttr {}
-
+/*
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct ElementKind {
     name: String,
@@ -98,15 +111,18 @@ pub struct ElementKind {
 pub struct Element {
     nodes: DVector<usize>,
     kind: ElementKind,
-    attr: ElementAttr,
+    attr: Attr,
 }
+*/
 
 pub trait DeserializeMesh {
-    fn de_node(&mut self, position: DVector<f64>, attr: NodeAttr);
-    fn de_element_indices(&mut self, indices: DVector<usize>, attr: ElementAttr);
+    /// Deserialize a node at a position and with attributes.
+    fn de_node(&mut self, position: DVector<f64>, attr: Attr);
+    fn de_element_indices<It>(&mut self, indices_it: It) where
+        It: Iterator<Item=(DVector<usize>, Attr)>;
 
     fn reserve_nodes(&mut self, _num_nodes: usize, _dim: usize, _num_attr: usize) {}
-    fn reserve_elements(&mut self, _num_elements: usize);
+    fn reserve_elements(&mut self, _num_elements: usize) {}
 }
 
 // TODO: move to correct place
@@ -114,22 +130,48 @@ pub trait DeserializeMesh {
 pub mod face_vertex {
     use super::*;
 
+    pub struct Node {
+        position: DVector<f64>,
+        attr: Attr,
+    }
+
+    /// A vec of elements of a specific type.
+    /// However this will only contain the bare information, further
+    /// casting might be desirable.
+    pub struct ElementVec {
+        name: String,
+        elements: Vec<Element>,
+    }
+
+    pub struct Element {
+        attr: Attr,
+        indices: DVector<usize>,
+    }
+
     pub struct Mesh {
         // TODO: Replace with compile time sized `Vector<..>`.
-        nodes: Vec<DVector<f64>>,
-        nodes_attr: Vec<NodeAttr>,
-        elements: Vec<Element>,
-        //element_kinds: BTreeMap<>
+        nodes: Vec<Node>,
+        nodes_attr: Vec<Attr>,
+        elements: Vec<ElementVec>,
     }
 
     impl DeserializeMesh for Mesh {
-        fn de_node(&mut self, position: DVector<f64>, attr: NodeAttr) {
-            self.nodes.push(position);
-            self.nodes_attr.push(attr);
+        fn de_node(&mut self, position: DVector<f64>, attr: Attr) {
+            self.nodes.push(Node {position, attr});
         }
 
-        fn de_element_indices(&mut self, indices: DVector<usize>, attr: ElementAttr) {
-            self.elements.push(indices);
+        fn de_element_indices<It>(&mut self, indices_it: It) where
+            It: Iterator<Item=(DVector<usize>, Attr)>
+        {
+            let mut el_vec = ElementVec {
+                // TODO get the name
+                name: "".into(),
+                elements: Vec::new()
+            };
+            for (indices, attr) in indices_it {
+                el_vec.elements.push(Element { attr, indices });
+            }
+            self.elements.push(el_vec);
         }
 
         fn reserve_nodes(&mut self, num_nodes: usize, dim: usize, num_attr: usize) {
@@ -138,7 +180,8 @@ pub mod face_vertex {
         }
 
         fn reserve_elements(&mut self, num: usize) {
-            self.elements.reserve_exact(num);
+            // TODO
+            //self.elements.reserve_exact(num);
         }
     }
 }

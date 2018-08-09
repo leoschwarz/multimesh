@@ -1,4 +1,4 @@
-use data::{DeserializeMesh, NodeAttr};
+use data::{DeserializeMesh, Attr};
 use regex::{Regex, RegexBuilder};
 use std::fmt::Display;
 use std::io::{self, Read};
@@ -61,7 +61,7 @@ impl MeditDeserializer {
                         for i in 0..dimension {
                             position[i] = reader.get_val()?;
                         }
-                        let mut attr = NodeAttr::new();
+                        let mut attr = Attr::new();
                         attr.insert(0, reader.get_val()?);
 
                         target.de_node(position, attr);
