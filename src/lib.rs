@@ -1,5 +1,5 @@
+extern crate itertools;
 extern crate nalgebra;
-//extern crate num_traits;
 extern crate regex;
 extern crate typenum;
 #[macro_use]

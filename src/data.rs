@@ -122,7 +122,7 @@ pub trait DeserializeMesh {
         It: Iterator<Item=(DVector<usize>, Attr)>;
 
     fn reserve_nodes(&mut self, _num_nodes: usize, _dim: usize, _num_attr: usize) {}
-    fn reserve_elements(&mut self, _num_elements: usize) {}
+    fn reserve_elements(&mut self, _name: String, _num_elements: usize) {}
 }
 
 // TODO: move to correct place
@@ -148,6 +148,7 @@ pub mod face_vertex {
         indices: DVector<usize>,
     }
 
+    #[derive(Default)]
     pub struct Mesh {
         // TODO: Replace with compile time sized `Vector<..>`.
         nodes: Vec<Node>,
@@ -155,7 +156,7 @@ pub mod face_vertex {
         elements: Vec<ElementVec>,
     }
 
-    impl DeserializeMesh for Mesh {
+    impl<'a> DeserializeMesh for &'a mut Mesh {
         fn de_node(&mut self, position: DVector<f64>, attr: Attr) {
             self.nodes.push(Node {position, attr});
         }
@@ -179,7 +180,7 @@ pub mod face_vertex {
             self.nodes_attr.reserve_exact(num_nodes);
         }
 
-        fn reserve_elements(&mut self, num: usize) {
+        fn reserve_elements(&mut self, name: String, num: usize) {
             // TODO
             //self.elements.reserve_exact(num);
         }

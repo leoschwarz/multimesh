@@ -1,11 +1,13 @@
 use data::{DeserializeMesh, Attr};
 use regex::{Regex, RegexBuilder};
+use std::collections::VecDeque;
 use std::fmt::Display;
 use std::io::{self, Read};
-use std::str::FromStr;
+use std::str::{FromStr, Lines};
 use std::marker::PhantomData;
 use nalgebra::DVector;
 
+#[derive(Debug)]
 pub enum DeserializeError {
     /// There was a problem with I/O.
     Io(io::Error),
@@ -67,7 +69,30 @@ impl MeditDeserializer {
                         target.de_node(position, attr);
                     }
                 }
-                _ => unimplemented!(),
+                "Triangles" => {
+                    let n_elements: usize = reader.get_val()?;
+                    let el_name = "Triangles".to_string();
+                    target.reserve_elements(el_name, n_elements);
+
+                    let mut extract_element = |_i_el: usize| {
+                        let mut indices = DVector::<usize>::from_element(3, 0);
+                        for i_no in 0..3 {
+                            indices[i_no] = reader.get_val()?;
+                        }
+                        let mut attr = Attr::new();
+                        attr.insert(0, reader.get_val()?);
+                        Ok((indices, attr))
+                    };
+
+                    target.de_element_indices((0..n_elements).map(extract_element).fold_results);
+                }
+                other => {
+                    if other.trim().is_empty() || other.starts_with("#") {
+                        // Ignore.
+                    } else {
+                        return Err(DeserializeError::Parse(format!("Unsupported keyword: {}", other)));
+                    }
+                }
             }
         }
 
@@ -75,16 +100,34 @@ impl MeditDeserializer {
     }
 }
 
+/*
 struct ItemReader<'s> {
     data: &'s str,
+    lines: Lines<'s>,
+    line_buff
     pointer: usize,
+}
+*/
+
+struct ItemReader<'s> {
+    lines: Lines<'s>,
+    line_buf: VecDeque<&'s str>,
 }
 
 impl<'s> ItemReader<'s> {
+    /*
     fn new(data: &'s str) -> Self {
         ItemReader {
             data: data,
+            lines: data.lines(),
             pointer: 0,
+        }
+    }
+    */
+    fn new(data: &'s str) -> Self {
+        ItemReader {
+            lines: data.lines(),
+            line_buf: VecDeque::new(),
         }
     }
 
@@ -109,13 +152,33 @@ impl<'s> Iterator for ItemReader<'s> {
     type Item = &'s str;
 
     fn next(&mut self) -> Option<Self::Item> {
-        lazy_static! {
-            static ref RE: Regex = RegexBuilder::new(r"\S+").multi_line(true).build().unwrap();
+        let mut probe_buf = |line_buf: &mut VecDeque<&'s str>| {
+            while let Some(item) = line_buf.remove(0) {
+                if !item.trim().is_empty() {
+                    return Some(item);
+                }
+            }
+            None
+        };
+
+        if let Some(item) = probe_buf(&mut self.line_buf) {
+            return Some(item);
         }
 
-        let mat = RE.find(&self.data[self.pointer..])?;
-        self.pointer += mat.end();
-        Some(mat.as_str())
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"\s+").unwrap();
+        }
+
+        while let Some(line) = self.lines.next() {
+            if !line.starts_with("#") && !line.trim().is_empty() {
+                self.line_buf.extend(RE.split(line));
+                if let Some(item) = probe_buf(&mut self.line_buf) {
+                    return Some(item);
+                }
+            }
+        }
+
+        None
     }
 }
 
