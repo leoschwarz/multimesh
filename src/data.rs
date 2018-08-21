@@ -58,7 +58,9 @@ mod storage {
 
 /// The name of an attribute.
 ///
-/// Some formats use indexed 
+/// In some cases attributes don't have a string key attached to them,
+/// but are refered to by a numeric index or assigned one according to
+/// their position in a list of attributes.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum AttrName {
     Index(usize),
@@ -115,14 +117,119 @@ pub struct Element {
 }
 */
 
+// TODO / OPTIONS:
+// 1) 
+
+pub struct Group {
+    /// A ID which is unique for each distinct group
+    /// while parsing.
+    parsing_uid: u64,
+    name: String,
+    attr: Attr,
+    size: Option<usize>,
+    kind: GroupKind,
+}
+
+impl PartialEq for Group {
+    fn eq(&self, other: &Group) -> bool {
+        self.parsing_uid == other.parsing_uid
+    }
+}
+impl Eq for Group {}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum GroupKind {
+    Node,
+    Element
+}
+
+impl Group {
+    pub fn new<N: Into<String>>(
+        parsing_uid: u64,
+        name: N,
+        size: Option<usize>,
+        kind: GroupKind) -> Self {
+        Group {
+            parsing_uid,
+            name: name.into(),
+            attr: Attr::new(),
+            size,
+            kind
+        }
+    }
+
+    // TODO: add convenience functions later when rest of api stabilized
+    /*
+    pub fn nodes<N: Into<String>>(parsing_uid: u64,
+                name: N,
+                size: Option<usize>) -> Group
+    {
+
+        Group {
+            parsing_uid,
+            name: name.into(),
+            attr: Attr::new(),
+            size,
+            kind: GroupKind::Node
+        }
+    }
+
+    pub fn elements<N: Into<String>>(parsing_uid: u64,
+                                     name: N,
+                                     size: Option<usize>) -> Group
+    */
+
+    pub fn attr(&self) -> &Attr {
+        &self.attr
+    }
+
+    pub fn size(&self) -> Option<usize> {
+        self.size
+    }
+
+    pub fn kind(&self) -> GroupKind {
+        self.kind
+    }
+}
+
+pub trait DeserializeElement {
+    fn indices(&mut self) -> Option<DVector<usize>>;
+    fn attr(&mut self) -> Attr;
+}
+
+impl DeserializeElement for (DVector<usize>, Attr) {
+    fn indices(&mut self) -> Option<DVector<usize>>
+    {
+        // TODO: this is bad
+        Some(self.0.clone())
+    }
+
+    fn attr(&mut self) -> Attr {
+        // TODO: this could be even worse
+        self.1.clone()
+    }
+}
+
+/// Types which are able to receive a deserialized mesh.
 pub trait DeserializeMesh {
+    fn de_group_begin(&mut self, group: &Group) {}
+    fn de_group_end(&mut self, group: &Group) {}
+
     /// Deserialize a node at a position and with attributes.
-    fn de_node(&mut self, position: DVector<f64>, attr: Attr);
+    ///
+    /// TODO: DVector should be const generic size (when supported)
+    fn de_node(&mut self, position: DVector<f64>, attr: Attr, group: &Group);
+    fn de_element<De: DeserializeElement>(
+        &mut self, element: De, group: &Group);
+
+    /*
+    fn de_node(&mut self, &, position: DVector<f64>, attr: Attr);
     fn de_element_indices<It>(&mut self, indices_it: It) where
         It: Iterator<Item=(DVector<usize>, Attr)>;
 
     fn reserve_nodes(&mut self, _num_nodes: usize, _dim: usize, _num_attr: usize) {}
     fn reserve_elements(&mut self, _name: String, _num_elements: usize) {}
+    */
 }
 
 // TODO: move to correct place
@@ -138,14 +245,15 @@ pub mod face_vertex {
     /// A vec of elements of a specific type.
     /// However this will only contain the bare information, further
     /// casting might be desirable.
-    pub struct ElementVec {
+    pub struct ElementGroup {
         name: String,
         elements: Vec<Element>,
+        group: Group,
     }
 
     pub struct Element {
         attr: Attr,
-        indices: DVector<usize>,
+        indices: DVector<usize>
     }
 
     #[derive(Default)]
@@ -153,10 +261,31 @@ pub mod face_vertex {
         // TODO: Replace with compile time sized `Vector<..>`.
         nodes: Vec<Node>,
         nodes_attr: Vec<Attr>,
-        elements: Vec<ElementVec>,
+        elements: Vec<ElementGroup>,
     }
 
     impl<'a> DeserializeMesh for &'a mut Mesh {
+        fn de_group_begin(&mut self, group: &Group) {
+            if group.kind() == GroupKind::Element {
+
+            }
+        }
+
+        fn de_group_end(&mut self, group: &Group) {}
+
+        fn de_node(&mut self, position: DVector<f64>, attr: Attr, group: &Group)
+        {
+            // TODO groups!
+            self.nodes.push(Node {position, attr});
+        }
+
+        fn de_element<De: DeserializeElement>(
+            &mut self, element: De, group: &Group)
+        {
+
+        }
+
+        /*
         fn de_node(&mut self, position: DVector<f64>, attr: Attr) {
             self.nodes.push(Node {position, attr});
         }
@@ -164,7 +293,7 @@ pub mod face_vertex {
         fn de_element_indices<It>(&mut self, indices_it: It) where
             It: Iterator<Item=(DVector<usize>, Attr)>
         {
-            let mut el_vec = ElementVec {
+            let mut el_vec = ElementGroup {
                 // TODO get the name
                 name: "".into(),
                 elements: Vec::new()
@@ -184,5 +313,6 @@ pub mod face_vertex {
             // TODO
             //self.elements.reserve_exact(num);
         }
+        */
     }
 }

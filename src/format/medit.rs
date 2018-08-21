@@ -1,4 +1,4 @@
-use data::{DeserializeMesh, Attr};
+use data::{DeserializeMesh, Attr, Group, GroupKind};
 use regex::{Regex, RegexBuilder};
 use std::collections::VecDeque;
 use std::fmt::Display;
@@ -38,6 +38,7 @@ impl MeditDeserializer {
         // Read data.
         let mut version: Option<&str> = None;
         let mut dimension: usize = 0;
+        let mut parsing_uid: u64 = 0;
 
         while let Some(keyword) = reader.next() {
             match keyword {
@@ -56,7 +57,10 @@ impl MeditDeserializer {
                     }
 
                     let num_nodes: usize = reader.get_val()?;
-                    target.reserve_nodes(num_nodes, dimension, 1);
+
+                    parsing_uid += 1;
+                    let group = Group::new(parsing_uid, "Vertices", Some(num_nodes), GroupKind::Node);
+                    target.de_group_begin(&group);
 
                     for _ in 0..num_nodes {
                         let mut position = DVector::<f64>::zeros(dimension);
@@ -66,25 +70,29 @@ impl MeditDeserializer {
                         let mut attr = Attr::new();
                         attr.insert(0, reader.get_val()?);
 
-                        target.de_node(position, attr);
+                        target.de_node(position, attr, &group);
                     }
+
+                    target.de_group_end(&group);
                 }
                 "Triangles" => {
-                    let n_elements: usize = reader.get_val()?;
-                    let el_name = "Triangles".to_string();
-                    target.reserve_elements(el_name, n_elements);
+                    let num_elements: usize = reader.get_val()?;
 
-                    let mut extract_element = |_i_el: usize| {
+                    parsing_uid += 1;
+                    let group = Group::new(parsing_uid, "Triangles", Some(num_elements), GroupKind::Element);
+                    target.de_group_begin(&group);
+
+                    for _ in 0..num_elements {
                         let mut indices = DVector::<usize>::from_element(3, 0);
                         for i_no in 0..3 {
                             indices[i_no] = reader.get_val()?;
                         }
                         let mut attr = Attr::new();
                         attr.insert(0, reader.get_val()?);
-                        Ok((indices, attr))
-                    };
+                        target.de_element((indices, attr), &group);
+                    }
 
-                    target.de_element_indices((0..n_elements).map(extract_element).fold_results);
+                    target.de_group_end(&group);
                 }
                 other => {
                     if other.trim().is_empty() || other.starts_with("#") {
