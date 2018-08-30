@@ -15,8 +15,6 @@ pub trait Element {
     fn nodes(&self) -> dyn AsRef<[Self::Node]>;
 }
 
-
-
 /*
 pub struct BoundingBox2<S> {
     pub min: Vector2<S>,

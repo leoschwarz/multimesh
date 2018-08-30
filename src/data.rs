@@ -1,60 +1,7 @@
-use nalgebra::{DVector, DMatrix, MatrixArray, Vector2, Vector3};
-use std::collections::BTreeMap;
+use nalgebra::{DMatrix, DVector, MatrixArray, Vector2, Vector3};
 use std::any::Any;
-
-/*
-// TODO: extract to crate (if the other todo can be fixed)
-mod storage {
-    use std::collections::BTreeMap;
-    use std::any::Any;
-    use std::cell::Cell;
-    use std::rc::Rc;
-    use std::mem;
-
-    // TODO: cannot be made generic, right?
-    use ::element::Element as Trait;
-
-    pub struct DynVecMap<Key> {
-        data: BTreeMap<Key, Box<dyn Any + 'static>>,
-    }
-
-    #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-    pub enum GetError {
-        Missing,
-        WrongType
-    }
-
-    impl<Key> DynVecMap<Key> where Key: Ord {
-        pub fn insert<V: Trait + 'static>(&mut self, key: Key, value: Vec<V>) {
-            self.data.insert(key, Box::new(value));
-        }
-
-        pub fn remove<V: Trait + 'static>(&mut self, key: &Key)
-            -> Result<Vec<V>, GetError>
-        {
-            let box_any = self.data.remove(key).ok_or(GetError::Missing)?;
-            box_any.downcast_mut::<Vec<V>>()
-                .map(|vecref| mem::replace(vecref, Vec::new()))
-                .ok_or(GetError::WrongType)
-        }
-
-        pub fn contains_key(&self, key: &Key) -> bool {
-            self.data.contains_key(key)
-        }
-
-        /*
-        pub fn contains_key_typed<V: Trait>(&self, key: &Key) -> bool {
-            if let Some(ref any) = self.data.get(key) {
-                any.is::<Cell<V>>()
-            } else {
-                false
-            }
-        }
-        */
-    }
-
-}
-*/
+use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
 
 /// The name of an attribute.
 ///
@@ -64,7 +11,7 @@ mod storage {
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum AttrName {
     Index(usize),
-    Key(String)
+    Key(String),
 }
 
 impl From<usize> for AttrName {
@@ -89,8 +36,12 @@ impl Attr {
     /// Create a new and empty attr instance.
     pub fn new() -> Self {
         Attr {
-            values: BTreeMap::new()
+            values: BTreeMap::new(),
         }
+    }
+
+    pub fn get<N: Into<AttrName>>(&self, name: N) -> Option<f64> {
+        self.values.get(&name.into()).cloned()
     }
 
     pub fn insert<N: Into<AttrName>>(&mut self, name: N, value: f64) {
@@ -104,22 +55,7 @@ impl Attr {
     // TODO: implement all nescessary methods.
 }
 
-/*
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct ElementKind {
-    name: String,
-}
-
-pub struct Element {
-    nodes: DVector<usize>,
-    kind: ElementKind,
-    attr: Attr,
-}
-*/
-
-// TODO / OPTIONS:
-// 1) 
-
+#[derive(Clone, Debug)]
 pub struct Group {
     /// A ID which is unique for each distinct group
     /// while parsing.
@@ -137,10 +73,16 @@ impl PartialEq for Group {
 }
 impl Eq for Group {}
 
+impl Hash for Group {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.parsing_uid.hash(state);
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum GroupKind {
     Node,
-    Element
+    Element,
 }
 
 impl Group {
@@ -148,13 +90,14 @@ impl Group {
         parsing_uid: u64,
         name: N,
         size: Option<usize>,
-        kind: GroupKind) -> Self {
+        kind: GroupKind,
+    ) -> Self {
         Group {
             parsing_uid,
             name: name.into(),
             attr: Attr::new(),
             size,
-            kind
+            kind,
         }
     }
 
@@ -192,51 +135,14 @@ impl Group {
     }
 }
 
-pub trait DeserializeElement {
-    fn indices(&mut self) -> Option<DVector<usize>>;
-    fn attr(&mut self) -> Attr;
-}
-
-impl DeserializeElement for (DVector<usize>, Attr) {
-    fn indices(&mut self) -> Option<DVector<usize>>
-    {
-        // TODO: this is bad
-        Some(self.0.clone())
-    }
-
-    fn attr(&mut self) -> Attr {
-        // TODO: this could be even worse
-        self.1.clone()
-    }
-}
-
-/// Types which are able to receive a deserialized mesh.
-pub trait DeserializeMesh {
-    fn de_group_begin(&mut self, group: &Group) {}
-    fn de_group_end(&mut self, group: &Group) {}
-
-    /// Deserialize a node at a position and with attributes.
-    ///
-    /// TODO: DVector should be const generic size (when supported)
-    fn de_node(&mut self, position: DVector<f64>, attr: Attr, group: &Group);
-    fn de_element<De: DeserializeElement>(
-        &mut self, element: De, group: &Group);
-
-    /*
-    fn de_node(&mut self, &, position: DVector<f64>, attr: Attr);
-    fn de_element_indices<It>(&mut self, indices_it: It) where
-        It: Iterator<Item=(DVector<usize>, Attr)>;
-
-    fn reserve_nodes(&mut self, _num_nodes: usize, _dim: usize, _num_attr: usize) {}
-    fn reserve_elements(&mut self, _name: String, _num_elements: usize) {}
-    */
-}
-
 // TODO: move to correct place
 /// Face-vertex mesh representation.
 pub mod face_vertex {
     use super::*;
+    use de::*;
+    use ser::*;
 
+    #[derive(Clone, Debug)]
     pub struct Node {
         position: DVector<f64>,
         attr: Attr,
@@ -245,44 +151,184 @@ pub mod face_vertex {
     /// A vec of elements of a specific type.
     /// However this will only contain the bare information, further
     /// casting might be desirable.
+    #[derive(Debug)]
     pub struct ElementGroup {
-        name: String,
-        elements: Vec<Element>,
         group: Group,
+        pub(crate) elements: Vec<Element>,
     }
 
+    #[derive(Debug)]
+    pub struct NodeGroup {
+        group: Group,
+        pub(crate) nodes: Vec<Node>,
+    }
+
+    #[derive(Debug)]
     pub struct Element {
         attr: Attr,
-        indices: DVector<usize>
+        indices: DVector<usize>,
     }
 
-    #[derive(Default)]
+    #[derive(Default, Debug)]
     pub struct Mesh {
         // TODO: Replace with compile time sized `Vector<..>`.
-        nodes: Vec<Node>,
-        nodes_attr: Vec<Attr>,
+        nodes: Vec<NodeGroup>,
         elements: Vec<ElementGroup>,
     }
+
+    impl<'m> SerializableNode for &'m Node {
+        fn position(&self) -> &DVector<f64> {
+            &self.position
+        }
+
+        fn attr(&self) -> &Attr {
+            &self.attr
+        }
+    }
+
+    impl<'m> SerializableGroup for &'m NodeGroup {
+        fn metadata(&self) -> GroupMetadata {
+            GroupMetadata {
+                name: self.group.name.clone(),
+                size: self.nodes.len(),
+            }
+        }
+
+        fn len(&self) -> usize {
+            self.nodes.len()
+        }
+    }
+
+    impl<'m> SerializableNodeGroup for &'m NodeGroup {
+        type Item = &'m Node;
+
+        fn item_at(&self, index: usize) -> Option<Self::Item>
+        {
+            self.nodes.get(index)
+        }
+    }
+
+    pub struct NodeGroupsIterator<'m> {
+        index: usize,
+        mesh: &'m Mesh
+    }
+
+    impl<'m> Iterator for NodeGroupsIterator<'m> {
+        type Item = &'m NodeGroup;
+
+        fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+            let opt = self.mesh.nodes.get(self.index);
+            self.index += 1;
+            opt
+        }
+    }
+
+    impl<'m> SerializableMesh for &'m Mesh {
+        type NodeGroup = &'m NodeGroup;
+        type NodeGroups = NodeGroupsIterator<'m>;
+        
+        fn metadata(&self) -> MeshMetadata {
+            MeshMetadata {
+                // TODO: actually get this value from somewhere!!
+                dimension: 3,
+            }
+        }
+
+        fn node_groups(&self) -> Self::NodeGroups {
+            NodeGroupsIterator {
+                index: 0,
+                mesh: self
+            }
+        }
+
+        /*
+        fn element_groups(&self) -> ElementSerializer {
+            ElementSerializer { mesh: self }
+        }
+        */
+    }
+
+    /*
+    pub struct ElementSerializer<'m> {
+        mesh: &'m Mesh,
+    }
+    */
+
+    /*
+    impl<'m> SerializableGroup for NodeSerializer<'m> {
+        type Error = ();
+
+        fn metadata(&self) -> GroupMetadata {
+
+        }
+
+        fn write_at<S: Serializer>(&self, index: usize, target: &mut S) ->
+            Result<(), Self::Error>
+        {
+            // TODO fail gracefully for missing index
+            // TODO how will this be implemented
+            target.write_node(self.node_group.nodes[index])
+        }
+    }
+
+
+    */
 
     impl<'a> DeserializeMesh for &'a mut Mesh {
         fn de_group_begin(&mut self, group: &Group) {
             if group.kind() == GroupKind::Element {
-
+                self.elements.push(ElementGroup {
+                    group: group.clone(),
+                    elements: match group.size() {
+                        Some(size) => Vec::with_capacity(size),
+                        None => Vec::new(),
+                    },
+                });
+            } else if group.kind() == GroupKind::Node {
+                self.nodes.push(NodeGroup {
+                    group: group.clone(),
+                    nodes: match group.size() {
+                        Some(size) => Vec::with_capacity(size),
+                        None => Vec::new()
+                    }
+                });
             }
         }
 
         fn de_group_end(&mut self, group: &Group) {}
 
-        fn de_node(&mut self, position: DVector<f64>, attr: Attr, group: &Group)
-        {
-            // TODO groups!
-            self.nodes.push(Node {position, attr});
+        fn de_node(
+            &mut self,
+            position: DVector<f64>,
+            attr: Attr,
+            group: &Group,
+        ) -> Result<(), DeserializerError> {
+            if let Some(ref mut no_group) = self.nodes.last_mut() {
+                no_group.nodes.push(Node {
+                    attr: attr,
+                    position: position
+                });
+            } else {
+                // TODO error!
+            }
+            Ok(())
         }
 
         fn de_element<De: DeserializeElement>(
-            &mut self, element: De, group: &Group)
-        {
-
+            &mut self,
+            mut element: De,
+            group: &Group,
+        ) -> Result<(), DeserializerError> {
+            if let Some(ref mut el_group) = self.elements.last_mut() {
+                el_group.elements.push(Element {
+                    attr: element.attr()?,
+                    // TODO support non-index formats
+                    indices: element.indices()?.unwrap(),
+                });
+            } else {
+                // TODO error!
+            }
+            Ok(())
         }
 
         /*
