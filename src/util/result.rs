@@ -21,22 +21,21 @@ impl<T, W, E> WResult<T, W, E> {
         }
     }
 
-    pub fn and_then<F, U>(self, f: F) -> WResult<U, W, E> where
-        F: FnOnce(T) -> WResult<U, W, E>
+    pub fn and_then<F, U>(self, f: F) -> WResult<U, W, E>
+    where
+        F: FnOnce(T) -> WResult<U, W, E>,
     {
         match self {
             WResult::Ok(t) => f(t),
-            WResult::Warn(t, mut w) => {
-                match f(t) {
-                    WResult::Ok(u) => WResult::Warn(u, w),
-                    WResult::Warn(u, ww) => {
-                        w.extend(ww);
-                        WResult::Warn(u, w)
-                    },
-                    WResult::Err(u, ww) => {
-                        w.extend(ww);
-                        WResult::Err(u, w)
-                    }
+            WResult::Warn(t, mut w) => match f(t) {
+                WResult::Ok(u) => WResult::Warn(u, w),
+                WResult::Warn(u, ww) => {
+                    w.extend(ww);
+                    WResult::Warn(u, w)
+                }
+                WResult::Err(u, ww) => {
+                    w.extend(ww);
+                    WResult::Err(u, w)
                 }
             },
             WResult::Err(e, w) => WResult::Err(e, w),

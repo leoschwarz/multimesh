@@ -1,18 +1,18 @@
 //! Defines the serialization interface for mesh container types.
 
+use data::Attr;
 use nalgebra::DVector;
 use naming::Name;
-use data::Attr;
 use std::io::Write;
 
 pub trait Serializer {
     type Result;
 
     fn serialize<M, W>(&self, mesh: M, target: W) -> Self::Result
-        where M: SerializableMesh,
-              W: Write;
+    where
+        M: SerializableMesh,
+        W: Write;
 }
-
 
 pub trait SerializableNode {
     fn position(&self) -> &DVector<f64>;
@@ -78,9 +78,9 @@ pub trait SerializableElementGroup: SerializableGroup {
 
 pub trait SerializableMesh {
     type NodeGroup: SerializableNodeGroup;
-    type NodeGroups: Iterator<Item=Self::NodeGroup>;
+    type NodeGroups: Iterator<Item = Self::NodeGroup>;
     type ElementGroup: SerializableElementGroup;
-    type ElementGroups: Iterator<Item=Self::ElementGroup>;
+    type ElementGroups: Iterator<Item = Self::ElementGroup>;
 
     fn metadata(&self) -> MeshMetadata;
 

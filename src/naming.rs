@@ -9,34 +9,34 @@ use std::borrow::Cow;
 
 pub(crate) const NODES_MEDIT: &'static [&'static str] = &[
     "Vertices", // x_i y_i z_i ref_i
-    "Normals", // x_i y_i z_i
+    "Normals",  // x_i y_i z_i
     "Tangents", // x_i y_i z_i
 ];
 pub(crate) const ELEMENTS_MEDIT: &'static [&'static str] = &[
-    "Edges", // e1_i e2_i ref_i
-    "Triangles", // v1_i v2_i v3_i ref_i
+    "Edges",          // e1_i e2_i ref_i
+    "Triangles",      // v1_i v2_i v3_i ref_i
     "Quadrilaterals", // v1_i v2_i v3_i v4_i ref_i
-    "Tetrahedra", // v1_i v2_i v3_i v4_i ref_i
-    "Hexahedra", // v1_i v2_i v3_i v4_i v5_i v6_i v7_i v8_i ref_i
+    "Tetrahedra",     // v1_i v2_i v3_i v4_i ref_i
+    "Hexahedra",      // v1_i v2_i v3_i v4_i v5_i v6_i v7_i v8_i ref_i
 ];
 // TODO: I'm not sure yet what to do about these, technically they could
 // all be handled as elements since they only hold integer references, but
 // this could lead to confusion with mesh elements.
 pub(crate) const OTHER_MEDIT: &'static [&'static str] = &[
-    "Ridges", // e_i
-    "RequiredEdges", // e_i
-    "Corners", // v_i
-    "RequiredVertices", // v_i
-    "NormalAtVertices", // v_i n_i
-    "NormalAtTriangleVertices", // t_i v_j n_i
+    "Ridges",                        // e_i
+    "RequiredEdges",                 // e_i
+    "Corners",                       // v_i
+    "RequiredVertices",              // v_i
+    "NormalAtVertices",              // v_i n_i
+    "NormalAtTriangleVertices",      // t_i v_j n_i
     "NormalAtQuadrilateralVertices", // q_i v_j n_i
-    "TangentAtEdges", // e_i v_j t_i
+    "TangentAtEdges",                // e_i v_j t_i
 ];
 
 #[derive(Clone, Debug)]
 pub struct Name {
     name: String,
-    format: Format
+    format: Format,
 }
 
 impl Name {
@@ -46,7 +46,7 @@ impl Name {
                 if NODES_MEDIT.contains(&s.as_str()) {
                     Some(Name {
                         name: s,
-                        format: Format::Medit
+                        format: Format::Medit,
                     })
                 } else {
                     None
@@ -61,7 +61,7 @@ impl Name {
                 if ELEMENTS_MEDIT.contains(&s.as_str()) {
                     Some(Name {
                         name: s,
-                        format: Format::Medit
+                        format: Format::Medit,
                     })
                 } else {
                     None

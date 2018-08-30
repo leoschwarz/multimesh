@@ -1,7 +1,7 @@
 use nalgebra::DVector;
+use naming::Name;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
-use naming::Name;
 
 /// The name of an attribute.
 ///
@@ -86,12 +86,7 @@ pub enum GroupKind {
 }
 
 impl Group {
-    pub fn new(
-        parsing_uid: u64,
-        name: Name,
-        size: Option<usize>,
-        kind: GroupKind,
-    ) -> Self {
+    pub fn new(parsing_uid: u64, name: Name, size: Option<usize>, kind: GroupKind) -> Self {
         Group {
             parsing_uid,
             name: name,
@@ -204,15 +199,14 @@ pub mod face_vertex {
     impl<'m> SerializableNodeGroup for &'m NodeGroup {
         type Item = &'m Node;
 
-        fn item_at(&self, index: usize) -> Option<Self::Item>
-        {
+        fn item_at(&self, index: usize) -> Option<Self::Item> {
             self.nodes.get(index)
         }
     }
 
     pub struct NodeGroupsIterator<'m> {
         index: usize,
-        mesh: &'m Mesh
+        mesh: &'m Mesh,
     }
 
     impl<'m> Iterator for NodeGroupsIterator<'m> {
@@ -229,7 +223,7 @@ pub mod face_vertex {
         fn metadata(&self) -> GroupMetadata {
             GroupMetadata {
                 name: self.group.name.clone(),
-                size: self.elements.len()
+                size: self.elements.len(),
             }
         }
 
@@ -258,7 +252,7 @@ pub mod face_vertex {
 
     pub struct ElementGroupsIterator<'m> {
         index: usize,
-        mesh: &'m Mesh
+        mesh: &'m Mesh,
     }
 
     impl<'m> Iterator for ElementGroupsIterator<'m> {
@@ -286,14 +280,14 @@ pub mod face_vertex {
         fn node_groups(&self) -> Self::NodeGroups {
             NodeGroupsIterator {
                 index: 0,
-                mesh: self
+                mesh: self,
             }
         }
 
         fn element_groups(&self) -> Self::ElementGroups {
             ElementGroupsIterator {
                 index: 0,
-                mesh: self
+                mesh: self,
             }
         }
     }
@@ -317,8 +311,8 @@ pub mod face_vertex {
                     group: group.clone(),
                     nodes: match group.size() {
                         Some(size) => Vec::with_capacity(size),
-                        None => Vec::new()
-                    }
+                        None => Vec::new(),
+                    },
                 });
             }
         }
@@ -334,7 +328,7 @@ pub mod face_vertex {
             if let Some(ref mut no_group) = self.nodes.last_mut() {
                 no_group.nodes.push(Node {
                     attr: attr,
-                    position: position
+                    position: position,
                 });
             } else {
                 // TODO error!

@@ -2,7 +2,7 @@ extern crate multimesh;
 
 use multimesh::data::face_vertex::Mesh;
 use multimesh::format::medit::{MeditDeserializer, MeditSerializer};
-use multimesh::ser::{Serializer, SerializableMesh};
+use multimesh::ser::{SerializableMesh, Serializer};
 use std::fs::File;
 
 #[test]
