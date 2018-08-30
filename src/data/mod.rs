@@ -2,6 +2,8 @@ use naming::Name;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
+pub mod face_vertex;
+
 /// The name of an attribute.
 ///
 /// In some cases attributes don't have a string key attached to them,

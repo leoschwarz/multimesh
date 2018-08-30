@@ -3,6 +3,7 @@
 
 use data::*;
 use de::*;
+use nalgebra::DVector;
 use ser::*;
 
 /// A mesh represented in face-vertex form, referred to as elements and nodes in the following.
@@ -193,12 +194,12 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
         group: &Group,
     ) -> Result<(), DeserializerError> {
         if let Some(ref mut no_group) = self.nodes.last_mut() {
-            no_group.nodes.push(Node {
-                attr, position
-            });
+            no_group.nodes.push(Node { attr, position });
             Ok(())
         } else {
-            Err(DeserializerError::BrokenInvariant("de_group_begin was not invoked".into()))
+            Err(DeserializerError::BrokenInvariant(
+                "de_group_begin was not invoked".into(),
+            ))
         }
     }
 
@@ -215,7 +216,9 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
             });
             Ok(())
         } else {
-            Err(DeserializerError::BrokenInvariant("de_group_begin was not invoked".into()))
+            Err(DeserializerError::BrokenInvariant(
+                "de_group_begin was not invoked".into(),
+            ))
         }
     }
 }
