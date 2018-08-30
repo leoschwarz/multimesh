@@ -1,22 +1,18 @@
 //! Defines the serialization interface for mesh container types.
 
 use nalgebra::DVector;
-use data::{Attr, Group};
+use naming::Name;
+use data::Attr;
 use std::io::Write;
 
-/*
-// TODO: How should the apis handle presence of data which is not supported by a specific format?!
-// it should return a warning result?
-//
-// i.e. should it use a type like:
-// (problem: carrier would only propagate err(e), but how would you propagate warn?
-//  → this could be done with a local variable and a custo macro)
-enum SerializerResult<T, W, E> {
-    Ok(T),
-    Warn(T, W),
-    Err(E),
+pub trait Serializer {
+    type Result;
+
+    fn serialize<M, W>(&self, mesh: M, target: W) -> Self::Result
+        where M: SerializableMesh,
+              W: Write;
 }
-*/
+
 
 pub trait SerializableNode {
     fn position(&self) -> &DVector<f64>;
@@ -46,13 +42,13 @@ impl MeshMetadata {
 
 pub struct GroupMetadata {
     // TODO: builder/constructor or public
-    pub(crate) name: String,
+    pub(crate) name: Name,
     pub(crate) size: usize,
 }
 
 impl GroupMetadata {
-    pub fn name(&self) -> &str {
-        self.name.as_ref()
+    pub fn name(&self) -> &Name {
+        &self.name
     }
 
     pub fn len(&self) -> usize {
@@ -90,12 +86,4 @@ pub trait SerializableMesh {
 
     fn node_groups(&self) -> Self::NodeGroups;
     fn element_groups(&self) -> Self::ElementGroups;
-}
-
-pub trait Serializer {
-    type Error;
-
-    fn serialize<M, W>(&self, mesh: M, target: W) -> Result<(), Self::Error>
-    where M: SerializableMesh,
-          W: Write;
 }

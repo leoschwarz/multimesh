@@ -1,7 +1,7 @@
-use nalgebra::{DMatrix, DVector, MatrixArray, Vector2, Vector3};
-use std::any::Any;
+use nalgebra::DVector;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
+use naming::Name;
 
 /// The name of an attribute.
 ///
@@ -60,7 +60,7 @@ pub struct Group {
     /// A ID which is unique for each distinct group
     /// while parsing.
     parsing_uid: u64,
-    name: String,
+    name: Name,
     attr: Attr,
     size: Option<usize>,
     kind: GroupKind,
@@ -86,15 +86,15 @@ pub enum GroupKind {
 }
 
 impl Group {
-    pub fn new<N: Into<String>>(
+    pub fn new(
         parsing_uid: u64,
-        name: N,
+        name: Name,
         size: Option<usize>,
         kind: GroupKind,
     ) -> Self {
         Group {
             parsing_uid,
-            name: name.into(),
+            name: name,
             attr: Attr::new(),
             size,
             kind,

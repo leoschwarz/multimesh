@@ -1,20 +1,37 @@
+//!
+//!
+//! Defined in https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf (ISSN 0249-0803).
+
 use data::{Attr, Group, GroupKind};
 use de::DeserializeMesh;
 use ser::{SerializableMesh, SerializableGroup, SerializableNodeGroup, SerializableNode, Serializer, SerializableElementGroup, SerializableElement};
 use nalgebra::DVector;
-use regex::{Regex, RegexBuilder};
+use regex::Regex;
 use std::collections::VecDeque;
 use std::fmt::Display;
 use std::io::{self, Read, Write};
-use std::marker::PhantomData;
 use std::str::{FromStr, Lines};
+use naming::Format;
+use naming::Name;
+
+fn element_nary(element_name: &str) -> Option<usize>
+{
+    match element_name {
+        "Edges" => Some(2),
+        "Triangles" => Some(3),
+        "Quadrilaterals" => Some(4),
+        "Tetrahedra" => Some(4),
+        "Hexahedra" => Some(8),
+        _ => None
+    }
+}
 
 #[derive(Debug)]
 pub enum DeserializeError {
     /// There was a problem with I/O.
     Io(io::Error),
 
-    /// Unsupported version or format encounterd.
+    /// Unsupported version or format encountered.
     Unsupported(String),
 
     /// Parsing the data failed for one of many possible reasons.
@@ -22,6 +39,7 @@ pub enum DeserializeError {
 }
 
 pub enum SerializeError {
+    InvalidElementGroup(String),
     Io(io::Error),
 }
 
@@ -41,9 +59,9 @@ impl MeditSerializer {
 }
 
 impl Serializer for MeditSerializer {
-    type Error = SerializeError;
+    type Result = Result<(), SerializeError>;
 
-    fn serialize<M, W>(&self, mesh: M, mut target: W) -> Result<(), SerializeError>
+    fn serialize<M, W>(&self, mesh: M, mut target: W) -> Self::Result
         where M: SerializableMesh, W: Write {
         // TODO: include version information of crate
         writeln!(target, "MeshVersionFormatted 1")?;
@@ -57,10 +75,12 @@ impl Serializer for MeditSerializer {
 
         for node_group in mesh.node_groups() {
             let group_metadata = node_group.metadata();
+            let group_name = group_metadata.name().get_as(Format::Medit)
+                .ok_or_else(|| SerializeError::InvalidElementGroup("No name".into()))?;
             // TODO: allow and check all other possible group names or return error instead of panic
-            assert_eq!(group_metadata.name(), "Vertices");
+            assert_eq!(group_name, "Vertices");
 
-            writeln!(target, "{}\n{}", group_metadata.name(), group_metadata.len())?;
+            writeln!(target, "{}\n{}", group_name, group_metadata.len())?;
             for i in 0..group_metadata.len() {
                 // TODO remove unwrap
                 let node = node_group.item_at(i).unwrap();
@@ -80,18 +100,23 @@ impl Serializer for MeditSerializer {
 
         for el_group in mesh.element_groups() {
             let group_metadata = el_group.metadata();
-            // TODO: allow and check all other possible group names or return error instead of panic
-            assert_eq!(group_metadata.name(), "Triangles");
-            writeln!(target, "{}\n{}", group_metadata.name(), group_metadata.len())?;
+            let group_name = group_metadata.name().get_as(Format::Medit)
+                .ok_or_else(|| SerializeError::InvalidElementGroup("No name".into()))?;
+            let nary = element_nary(&group_name).ok_or_else(|| {
+                SerializeError::InvalidElementGroup(group_name.clone().into())
+            })?;
+
+            writeln!(target, "{}\n{}", group_name, group_metadata.len())?;
             for i in 0..group_metadata.len() {
                 // TODO remove unwrap
                 let element = el_group.item_at(i).unwrap();
                 let is = element.node_indices().unwrap();
                 let attr = element.attr().get(0).unwrap_or(0.);
-                let nary = 3;
-                assert_eq!(nary, 3);
 
-                writeln!(target, "{} {} {} {}", is[0], is[1], is[2], attr)?;
+                for j in 0..nary {
+                    write!(target, "{} ", is[j])?;
+                }
+                writeln!(target, "{}", attr)?;
             }
             writeln!(target, "")?;
         }
@@ -141,16 +166,17 @@ impl MeditDeserializer {
                         .map_err(|_| DeserializeError::Parse("Dimension".into()))?;
                     target.de_dimension(dimension as u8);
                 }
-                "Vertices" => {
-                    if dimension == 0 {
+                "Vertices" | "Normals" | "Tangents" => {
+                    if dimension != 3 {
                         return Err(DeserializeError::Parse("Bad dimension.".into()));
                     }
 
                     let num_nodes: usize = reader.get_val()?;
 
                     parsing_uid += 1;
+                    let group_name = Name::parse_node(keyword.into(), Format::Medit).unwrap();
                     let group =
-                        Group::new(parsing_uid, "Vertices", Some(num_nodes), GroupKind::Node);
+                        Group::new(parsing_uid, group_name, Some(num_nodes), GroupKind::Node);
                     target.de_group_begin(&group);
 
                     for _ in 0..num_nodes {
@@ -159,28 +185,34 @@ impl MeditDeserializer {
                             position[i] = reader.get_val()?;
                         }
                         let mut attr = Attr::new();
-                        attr.insert(0, reader.get_val()?);
+                        if keyword == "Vertices" {
+                            attr.insert(0, reader.get_val()?);
+                        }
 
                         target.de_node(position, attr, &group);
                     }
 
                     target.de_group_end(&group);
                 }
-                "Triangles" => {
+                "Edges" | "Triangles" | "Quadrilaterals" | "Tetrahedra" | "Hexahedra"
+                => {
                     let num_elements: usize = reader.get_val()?;
+                    // Note: Should never fail by definition of `element_nary`.
+                    let nary = element_nary(keyword).unwrap();
 
                     parsing_uid += 1;
+                    let group_name = Name::parse_element(keyword.into(), Format::Medit).unwrap();
                     let group = Group::new(
                         parsing_uid,
-                        "Triangles",
+                        group_name,
                         Some(num_elements),
                         GroupKind::Element,
                     );
                     target.de_group_begin(&group);
 
                     for _ in 0..num_elements {
-                        let mut indices = DVector::<usize>::from_element(3, 0);
-                        for i_no in 0..3 {
+                        let mut indices = DVector::<usize>::from_element(nary, 0);
+                        for i_no in 0..nary {
                             indices[i_no] = reader.get_val()?;
                         }
                         let mut attr = Attr::new();
@@ -279,6 +311,7 @@ impl<'s> Iterator for ItemReader<'s> {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

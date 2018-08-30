@@ -35,8 +35,8 @@ pub trait DeserializeMesh {
     fn de_dimension(&mut self, dim: u8);
 
     // TODO: should these methods also result a result?
-    fn de_group_begin(&mut self, group: &Group) {}
-    fn de_group_end(&mut self, group: &Group) {}
+    fn de_group_begin(&mut self, _group: &Group) {}
+    fn de_group_end(&mut self, _group: &Group) {}
 
     /// Deserialize a node at a position and with attributes.
     ///

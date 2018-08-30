@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 extern crate nalgebra;
 extern crate regex;
 #[macro_use]
@@ -12,5 +14,7 @@ pub mod de;
 pub mod ser;
 
 pub mod data;
-pub mod element;
 pub mod format;
+
+pub mod naming;
+pub mod util;
