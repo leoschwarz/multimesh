@@ -1,6 +1,6 @@
 use data::{Attr, Group, GroupKind};
 use de::DeserializeMesh;
-use ser::{SerializableMesh, SerializableGroup, SerializableNodeGroup, SerializableNode, Serializer};
+use ser::{SerializableMesh, SerializableGroup, SerializableNodeGroup, SerializableNode, Serializer, SerializableElementGroup, SerializableElement};
 use nalgebra::DVector;
 use regex::{Regex, RegexBuilder};
 use std::collections::VecDeque;
@@ -74,6 +74,24 @@ impl Serializer for MeditSerializer {
                     // TODO
                     panic!("unsupported");
                 }
+            }
+            writeln!(target, "")?;
+        }
+
+        for el_group in mesh.element_groups() {
+            let group_metadata = el_group.metadata();
+            // TODO: allow and check all other possible group names or return error instead of panic
+            assert_eq!(group_metadata.name(), "Triangles");
+            writeln!(target, "{}\n{}", group_metadata.name(), group_metadata.len())?;
+            for i in 0..group_metadata.len() {
+                // TODO remove unwrap
+                let element = el_group.item_at(i).unwrap();
+                let is = element.node_indices().unwrap();
+                let attr = element.attr().get(0).unwrap_or(0.);
+                let nary = 3;
+                assert_eq!(nary, 3);
+
+                writeln!(target, "{} {} {} {}", is[0], is[1], is[2], attr)?;
             }
             writeln!(target, "")?;
         }

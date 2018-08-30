@@ -58,12 +58,6 @@ impl GroupMetadata {
     pub fn len(&self) -> usize {
         self.size
     }
-
-    /*
-    #[deprecated]
-    pub fn size(&self) -> usize {
-        self.size
-    }*/
 }
 
 pub trait SerializableGroup {
@@ -89,13 +83,13 @@ pub trait SerializableElementGroup: SerializableGroup {
 pub trait SerializableMesh {
     type NodeGroup: SerializableNodeGroup;
     type NodeGroups: Iterator<Item=Self::NodeGroup>;
-    //type ElementGroup: SerializableElementGroup;
-    //type ElementGroups: Iterator<Item=Self::ElementGroup>;
+    type ElementGroup: SerializableElementGroup;
+    type ElementGroups: Iterator<Item=Self::ElementGroup>;
 
     fn metadata(&self) -> MeshMetadata;
 
     fn node_groups(&self) -> Self::NodeGroups;
-    //fn element_groups(&self) -> Self::ElementGroups;
+    fn element_groups(&self) -> Self::ElementGroups;
 }
 
 pub trait Serializer {

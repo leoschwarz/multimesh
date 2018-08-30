@@ -225,9 +225,57 @@ pub mod face_vertex {
         }
     }
 
+    impl<'m> SerializableGroup for &'m ElementGroup {
+        fn metadata(&self) -> GroupMetadata {
+            GroupMetadata {
+                name: self.group.name.clone(),
+                size: self.elements.len()
+            }
+        }
+
+        fn len(&self) -> usize {
+            self.elements.len()
+        }
+    }
+
+    impl<'m> SerializableElement for &'m Element {
+        fn node_indices(&self) -> Option<&DVector<usize>> {
+            Some(&self.indices)
+        }
+
+        fn attr(&self) -> &Attr {
+            &self.attr
+        }
+    }
+
+    impl<'m> SerializableElementGroup for &'m ElementGroup {
+        type Item = &'m Element;
+
+        fn item_at(&self, index: usize) -> Option<<Self as SerializableElementGroup>::Item> {
+            self.elements.get(index)
+        }
+    }
+
+    pub struct ElementGroupsIterator<'m> {
+        index: usize,
+        mesh: &'m Mesh
+    }
+
+    impl<'m> Iterator for ElementGroupsIterator<'m> {
+        type Item = &'m ElementGroup;
+
+        fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+            let opt = self.mesh.elements.get(self.index);
+            self.index += 1;
+            opt
+        }
+    }
+
     impl<'m> SerializableMesh for &'m Mesh {
         type NodeGroup = &'m NodeGroup;
         type NodeGroups = NodeGroupsIterator<'m>;
+        type ElementGroup = &'m ElementGroup;
+        type ElementGroups = ElementGroupsIterator<'m>;
 
         fn metadata(&self) -> MeshMetadata {
             MeshMetadata {
@@ -242,11 +290,12 @@ pub mod face_vertex {
             }
         }
 
-        /*
-        fn element_groups(&self) -> ElementSerializer {
-            ElementSerializer { mesh: self }
+        fn element_groups(&self) -> Self::ElementGroups {
+            ElementGroupsIterator {
+                index: 0,
+                mesh: self
+            }
         }
-        */
     }
 
     impl<'a> DeserializeMesh for &'a mut Mesh {
