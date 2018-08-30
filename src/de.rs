@@ -11,6 +11,9 @@ use nalgebra::DVector;
 pub enum DeserializerError {
     #[fail(display = "Deserializing failed due to IO error: {:?}", _0)]
     Io(::std::io::Error),
+
+    #[fail(display = "Implementor of multimesh traits broke invariant, or internal bug: {:?}", _0)]
+    BrokenInvariant(String),
 }
 
 pub trait DeserializeElement {

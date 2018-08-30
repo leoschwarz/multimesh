@@ -3,7 +3,7 @@
 //! Defined in https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf (ISSN 0249-0803).
 
 use data::{Attr, Group, GroupKind};
-use de::DeserializeMesh;
+use de::{DeserializeMesh, DeserializerError};
 use nalgebra::DVector;
 use naming::Format;
 use naming::Name;
@@ -38,6 +38,14 @@ pub enum DeserializeError {
 
     /// Parsing the data failed for one of many possible reasons.
     Parse(String),
+
+    Deserializer(DeserializerError),
+}
+
+impl From<DeserializerError> for DeserializeError {
+    fn from(e: DeserializerError) -> Self {
+        DeserializeError::Deserializer(e)
+    }
 }
 
 pub enum SerializeError {
@@ -151,18 +159,17 @@ impl MeditDeserializer {
         let mut reader = ItemReader::new(data.as_ref());
 
         // Read data.
-        let mut version: Option<&str> = None;
         let mut dimension: usize = 0;
         let mut parsing_uid: u64 = 0;
 
         while let Some(keyword) = reader.next() {
             match keyword {
                 "MeshVersionFormatted" => {
-                    version = Some(reader.get_next()?);
-                    if version != Some("1") {
+                    let version: &str = reader.get_next()?;
+                    if version != "1" {
                         return Err(DeserializeError::Parse(format!(
                             "Unsupported version: {}",
-                            version.unwrap()
+                            version
                         )));
                     }
                 }
@@ -196,7 +203,7 @@ impl MeditDeserializer {
                             attr.insert(0, reader.get_val()?);
                         }
 
-                        target.de_node(position, attr, &group);
+                        target.de_node(position, attr, &group)?;
                     }
 
                     target.de_group_end(&group);
@@ -223,7 +230,7 @@ impl MeditDeserializer {
                         }
                         let mut attr = Attr::new();
                         attr.insert(0, reader.get_val()?);
-                        target.de_element((indices, attr), &group);
+                        target.de_element((indices, attr), &group)?;
                     }
 
                     target.de_group_end(&group);
