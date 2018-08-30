@@ -171,6 +171,8 @@ pub mod face_vertex {
 
     #[derive(Default, Debug)]
     pub struct Mesh {
+        dimension: u8,
+
         // TODO: Replace with compile time sized `Vector<..>`.
         nodes: Vec<NodeGroup>,
         elements: Vec<ElementGroup>,
@@ -226,11 +228,10 @@ pub mod face_vertex {
     impl<'m> SerializableMesh for &'m Mesh {
         type NodeGroup = &'m NodeGroup;
         type NodeGroups = NodeGroupsIterator<'m>;
-        
+
         fn metadata(&self) -> MeshMetadata {
             MeshMetadata {
-                // TODO: actually get this value from somewhere!!
-                dimension: 3,
+                dimension: self.dimension,
             }
         }
 
@@ -248,33 +249,11 @@ pub mod face_vertex {
         */
     }
 
-    /*
-    pub struct ElementSerializer<'m> {
-        mesh: &'m Mesh,
-    }
-    */
-
-    /*
-    impl<'m> SerializableGroup for NodeSerializer<'m> {
-        type Error = ();
-
-        fn metadata(&self) -> GroupMetadata {
-
-        }
-
-        fn write_at<S: Serializer>(&self, index: usize, target: &mut S) ->
-            Result<(), Self::Error>
-        {
-            // TODO fail gracefully for missing index
-            // TODO how will this be implemented
-            target.write_node(self.node_group.nodes[index])
-        }
-    }
-
-
-    */
-
     impl<'a> DeserializeMesh for &'a mut Mesh {
+        fn de_dimension(&mut self, dim: u8) {
+            self.dimension = dim;
+        }
+
         fn de_group_begin(&mut self, group: &Group) {
             if group.kind() == GroupKind::Element {
                 self.elements.push(ElementGroup {
@@ -330,35 +309,5 @@ pub mod face_vertex {
             }
             Ok(())
         }
-
-        /*
-        fn de_node(&mut self, position: DVector<f64>, attr: Attr) {
-            self.nodes.push(Node {position, attr});
-        }
-
-        fn de_element_indices<It>(&mut self, indices_it: It) where
-            It: Iterator<Item=(DVector<usize>, Attr)>
-        {
-            let mut el_vec = ElementGroup {
-                // TODO get the name
-                name: "".into(),
-                elements: Vec::new()
-            };
-            for (indices, attr) in indices_it {
-                el_vec.elements.push(Element { attr, indices });
-            }
-            self.elements.push(el_vec);
-        }
-
-        fn reserve_nodes(&mut self, num_nodes: usize, dim: usize, num_attr: usize) {
-            self.nodes.reserve_exact(num_nodes);
-            self.nodes_attr.reserve_exact(num_nodes);
-        }
-
-        fn reserve_elements(&mut self, name: String, num: usize) {
-            // TODO
-            //self.elements.reserve_exact(num);
-        }
-        */
     }
 }

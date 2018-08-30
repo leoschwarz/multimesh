@@ -2,6 +2,7 @@
 
 use nalgebra::DVector;
 use data::{Attr, Group};
+use std::io::Write;
 
 /*
 // TODO: How should the apis handle presence of data which is not supported by a specific format?!
@@ -14,24 +15,6 @@ enum SerializerResult<T, W, E> {
     Ok(T),
     Warn(T, W),
     Err(E),
-}
-
-pub trait NodeSerializer {
-    fn position(&mut self, p: DVector<f64>);
-    fn attr(&mut self, a: Attr);
-}
-
-pub trait ElementSerializer {
-    fn node_indices(&mut self, i: DVector<usize>);
-    fn node_positions(&mut self, i: DVector<usize>);
-    fn attr(&mut self, a: Attr);
-}
-
-// TODO: should groups be handled by this trait or the node/element serializers?
-pub trait SerializeMesh {
-    fn ser_dimension(&self) -> u32;
-    fn ser_nodes<S: NodeSerializer>(&self, ser: S, group: &Group);
-    fn ser_elements<S: ElementSerializer>(&self, ser: S, group: &Group);
 }
 */
 
@@ -72,9 +55,15 @@ impl GroupMetadata {
         self.name.as_ref()
     }
 
-    pub fn size(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.size
     }
+
+    /*
+    #[deprecated]
+    pub fn size(&self) -> usize {
+        self.size
+    }*/
 }
 
 pub trait SerializableGroup {
@@ -97,37 +86,11 @@ pub trait SerializableElementGroup: SerializableGroup {
     fn item_at(&self, index: usize) -> Option<Self::Item>;
 }
 
-/*
-pub trait SerializableGroup {
-    type Error;
-    type Item;
-    type Items: Iterator<Item>;
-
-    fn metadata(&self) -> GroupMetadata;
-    fn items(&self) -> Self::Items;
-
-    fn write_at<S: Serializer>(&self, index: usize, target: &mut S) -> Result<(), Self::Error>;
-
-    fn write_all<S: Serializer>(&self, target: &mut S) -> Result<(), Self::Error>
-    {
-        // TODO: if further fields are added to metadata, this should be revised
-        let size = self.metadata().size();
-        for i in 0..size {
-            self.write_at(i, target)?;
-        }
-        Ok(())
-    }
-}
-*/
-
 pub trait SerializableMesh {
     type NodeGroup: SerializableNodeGroup;
     type NodeGroups: Iterator<Item=Self::NodeGroup>;
-
-    /*
-    type ElementGroup: SerializableElementGroup;
-    type ElementGroups: Iterator<Item=Self::ElementGroup>;
-    */
+    //type ElementGroup: SerializableElementGroup;
+    //type ElementGroups: Iterator<Item=Self::ElementGroup>;
 
     fn metadata(&self) -> MeshMetadata;
 
@@ -136,22 +99,9 @@ pub trait SerializableMesh {
 }
 
 pub trait Serializer {
-    fn serialize<M>(&self, mesh: M)
-    where M: SerializableMesh;
-    /*
-    fn serialize<M, NG, EG>(&self, mesh: M)
+    type Error;
+
+    fn serialize<M, W>(&self, mesh: M, target: W) -> Result<(), Self::Error>
     where M: SerializableMesh,
-          M::SerializableNodeGroups: Iterator<Item=NG>,
-          M::SerializableElementGroups: Iterator<Item=EG>,
-          NG: SerializableNodeGroup,
-          EG: SerializableElementGroup;
-    */
+          W: Write;
 }
-
-/*
-pub trait Serializer {
-    fn serialize<M>(&self, mesh: M)
-    where M: SerializableMesh<NodeGroupsSerializer=Iterator<Item=SerializableGroup<Item=Node>>>
-}
-*/
-

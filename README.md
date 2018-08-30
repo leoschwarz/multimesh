@@ -4,5 +4,5 @@ The goal of this Rust crate is to provide generic readers and writers for variou
 
 ## Status
 
-Early work in progress.
+Early work in progress, code is ugly and I'm prototyping an ergonomic API.
 
