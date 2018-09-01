@@ -52,6 +52,8 @@ impl<'m> SerializableNode for &'m Node {
 }
 
 impl<'m> SerializableGroup for &'m NodeGroup {
+    type Item = &'m Node;
+
     fn metadata(&self) -> GroupMetadata {
         GroupMetadata {
             name: self.group.name.clone(),
@@ -62,10 +64,6 @@ impl<'m> SerializableGroup for &'m NodeGroup {
     fn len(&self) -> usize {
         self.nodes.len()
     }
-}
-
-impl<'m> SerializableNodeGroup for &'m NodeGroup {
-    type Item = &'m Node;
 
     fn item_at(&self, index: usize) -> Option<Self::Item> {
         self.nodes.get(index)
@@ -88,6 +86,8 @@ impl<'m> Iterator for NodeGroupsIterator<'m> {
 }
 
 impl<'m> SerializableGroup for &'m ElementGroup {
+    type Item = &'m Element;
+
     fn metadata(&self) -> GroupMetadata {
         GroupMetadata {
             name: self.group.name.clone(),
@@ -98,6 +98,10 @@ impl<'m> SerializableGroup for &'m ElementGroup {
     fn len(&self) -> usize {
         self.elements.len()
     }
+
+    fn item_at(&self, index: usize) -> Option<Self::Item> {
+        self.elements.get(index)
+    }
 }
 
 impl<'m> SerializableElement for &'m Element {
@@ -107,14 +111,6 @@ impl<'m> SerializableElement for &'m Element {
 
     fn attr(&self) -> &Attr {
         &self.attr
-    }
-}
-
-impl<'m> SerializableElementGroup for &'m ElementGroup {
-    type Item = &'m Element;
-
-    fn item_at(&self, index: usize) -> Option<<Self as SerializableElementGroup>::Item> {
-        self.elements.get(index)
     }
 }
 
@@ -134,8 +130,10 @@ impl<'m> Iterator for ElementGroupsIterator<'m> {
 }
 
 impl<'m> SerializableMesh for &'m Mesh {
+    type Node = &'m Node;
     type NodeGroup = &'m NodeGroup;
     type NodeGroups = NodeGroupsIterator<'m>;
+    type Element = &'m Element;
     type ElementGroup = &'m ElementGroup;
     type ElementGroups = ElementGroupsIterator<'m>;
 

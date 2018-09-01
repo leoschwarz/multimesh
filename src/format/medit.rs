@@ -1,6 +1,6 @@
 //!
 //!
-//! Defined in https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf (ISSN 0249-0803).
+//! Defined in [https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf](ISSN 0249-0803) .
 
 use data::{Attr, Group, GroupKind};
 use de::{DeserializeMesh, DeserializerError};
@@ -8,10 +8,7 @@ use nalgebra::DVector;
 use naming::Format;
 use naming::Name;
 use regex::Regex;
-use ser::{
-    SerializableElement, SerializableElementGroup, SerializableGroup, SerializableMesh,
-    SerializableNode, SerializableNodeGroup, Serializer,
-};
+use ser::{SerializableElement, SerializableGroup, SerializableMesh, SerializableNode, Serializer};
 use std::collections::VecDeque;
 use std::fmt::Display;
 use std::io::{self, Read, Write};
@@ -65,6 +62,78 @@ impl MeditSerializer {
     pub fn new() -> Self {
         MeditSerializer {}
     }
+
+    fn serialize_group<G, GS, W, F, FR>(
+        &self,
+        groups: GS,
+        mut target: W,
+        serialize_item: F,
+    ) -> <Self as Serializer>::Result
+    where
+        G: SerializableGroup,
+        GS: Iterator<Item = G>,
+        W: Write,
+        F: Fn(&mut W, <G as SerializableGroup>::Item, &str) -> FR,
+        FR: Into<<Self as Serializer>::Result>,
+    {
+        for group in groups {
+            let group_metadata = group.metadata();
+            // TODO: Rename error to "InvalidGroup".
+            let group_name = group_metadata
+                .name()
+                .get_as(Format::Medit)
+                .ok_or_else(|| SerializeError::InvalidElementGroup("No name".into()))?;
+
+            writeln!(target, "{}\n{}", group_name, group.len())?;
+
+            for i in 0..group_metadata.len() {
+                // TODO: Remove unwrap, this is an invariant violation error.
+                let item = group.item_at(i).unwrap();
+                serialize_item(&mut target, item, &group_name).into()?;
+            }
+
+            writeln!(target, "")?;
+        }
+
+        Ok(())
+    }
+
+    fn serialize_node<N, W>(node: N, mut target: W, mesh_dim: u8) -> <Self as Serializer>::Result
+    where
+        N: SerializableNode,
+        W: Write,
+    {
+        let p = node.position();
+        let attr = node.attr().get(0).unwrap_or(0.);
+        if mesh_dim == 2 {
+            writeln!(target, "{} {} {}", p[0], p[1], attr)?;
+        } else if mesh_dim == 3 {
+            writeln!(target, "{} {} {} {}", p[0], p[1], p[2], attr)?;
+        } else {
+            // TODO
+            panic!("unsupported");
+        }
+        Ok(())
+    }
+
+    fn serialize_element<E, W>(
+        element: E,
+        mut target: W,
+        nary: usize,
+    ) -> <Self as Serializer>::Result
+    where
+        E: SerializableElement,
+        W: Write,
+    {
+        let is = element.node_indices().unwrap();
+        let attr = element.attr().get(0).unwrap_or(0.);
+
+        for j in 0..nary {
+            write!(target, "{} ", is[j])?;
+        }
+        writeln!(target, "{}", attr)?;
+        Ok(())
+    }
 }
 
 impl Serializer for MeditSerializer {
@@ -85,56 +154,13 @@ impl Serializer for MeditSerializer {
         assert!(mesh_dim == 2 || mesh_dim == 3);
         writeln!(target, "Dimension {}\n", mesh_dim)?;
 
-        for node_group in mesh.node_groups() {
-            let group_metadata = node_group.metadata();
-            let group_name = group_metadata
-                .name()
-                .get_as(Format::Medit)
-                .ok_or_else(|| SerializeError::InvalidElementGroup("No name".into()))?;
-            // TODO: allow and check all other possible group names or return error instead of panic
-            assert_eq!(group_name, "Vertices");
-
-            writeln!(target, "{}\n{}", group_name, group_metadata.len())?;
-            for i in 0..group_metadata.len() {
-                // TODO remove unwrap
-                let node = node_group.item_at(i).unwrap();
-                let p = node.position();
-                let attr = node.attr().get(0).unwrap_or(0.);
-                if mesh_dim == 2 {
-                    writeln!(target, "{} {} {}", p[0], p[1], attr)?;
-                } else if mesh_dim == 3 {
-                    writeln!(target, "{} {} {} {}", p[0], p[1], p[2], attr)?;
-                } else {
-                    // TODO
-                    panic!("unsupported");
-                }
-            }
-            writeln!(target, "")?;
-        }
-
-        for el_group in mesh.element_groups() {
-            let group_metadata = el_group.metadata();
-            let group_name = group_metadata
-                .name()
-                .get_as(Format::Medit)
-                .ok_or_else(|| SerializeError::InvalidElementGroup("No name".into()))?;
-            let nary = element_nary(&group_name)
-                .ok_or_else(|| SerializeError::InvalidElementGroup(group_name.clone().into()))?;
-
-            writeln!(target, "{}\n{}", group_name, group_metadata.len())?;
-            for i in 0..group_metadata.len() {
-                // TODO remove unwrap
-                let element = el_group.item_at(i).unwrap();
-                let is = element.node_indices().unwrap();
-                let attr = element.attr().get(0).unwrap_or(0.);
-
-                for j in 0..nary {
-                    write!(target, "{} ", is[j])?;
-                }
-                writeln!(target, "{}", attr)?;
-            }
-            writeln!(target, "")?;
-        }
+        self.serialize_group(mesh.node_groups(), &mut target, |tgt, node, _| {
+            Self::serialize_node(node, tgt, mesh_dim)
+        })?;
+        self.serialize_group(mesh.element_groups(), &mut target, |tgt, element, name| {
+            let nary = element_nary(name).unwrap();
+            Self::serialize_element(element, tgt, nary)
+        })?;
 
         writeln!(target, "End")?;
 

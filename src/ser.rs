@@ -57,29 +57,23 @@ impl GroupMetadata {
 }
 
 pub trait SerializableGroup {
+    type Item;
+
     fn metadata(&self) -> GroupMetadata;
 
     fn len(&self) -> usize {
         self.metadata().size
     }
-}
-
-pub trait SerializableNodeGroup: SerializableGroup {
-    type Item: SerializableNode;
-
-    fn item_at(&self, index: usize) -> Option<Self::Item>;
-}
-
-pub trait SerializableElementGroup: SerializableGroup {
-    type Item: SerializableElement;
 
     fn item_at(&self, index: usize) -> Option<Self::Item>;
 }
 
 pub trait SerializableMesh {
-    type NodeGroup: SerializableNodeGroup;
+    type Node: SerializableNode;
+    type NodeGroup: SerializableGroup<Item = Self::Node>;
     type NodeGroups: Iterator<Item = Self::NodeGroup>;
-    type ElementGroup: SerializableElementGroup;
+    type Element: SerializableElement;
+    type ElementGroup: SerializableGroup<Item = Self::Element>;
     type ElementGroups: Iterator<Item = Self::ElementGroup>;
 
     fn metadata(&self) -> MeshMetadata;
