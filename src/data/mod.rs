@@ -7,7 +7,7 @@ pub mod face_vertex;
 /// The name of an attribute.
 ///
 /// In some cases attributes don't have a string key attached to them,
-/// but are refered to by a numeric index or assigned one according to
+/// but are referred to by a numeric index or assigned one according to
 /// their position in a list of attributes.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum AttrName {
@@ -53,13 +53,12 @@ impl Attr {
         self.values.len()
     }
 
-    // TODO: implement all nescessary methods.
+    // TODO: implement all necessary methods. (Maybe also implement ops::Index and Iter.)
 }
 
 #[derive(Clone, Debug)]
 pub struct Group {
-    /// A ID which is unique for each distinct group
-    /// while parsing.
+    /// A ID which is unique for each distinct group while parsing.
     parsing_uid: u64,
     name: Name,
     attr: Attr,
@@ -72,6 +71,7 @@ impl PartialEq for Group {
         self.parsing_uid == other.parsing_uid
     }
 }
+
 impl Eq for Group {}
 
 impl Hash for Group {
@@ -90,43 +90,26 @@ impl Group {
     pub fn new(parsing_uid: u64, name: Name, size: Option<usize>, kind: GroupKind) -> Self {
         Group {
             parsing_uid,
-            name: name,
+            name,
             attr: Attr::new(),
             size,
             kind,
         }
     }
 
-    // TODO: add convenience functions later when rest of api stabilized
-    /*
-    pub fn nodes<N: Into<String>>(parsing_uid: u64,
-                name: N,
-                size: Option<usize>) -> Group
-    {
-
-        Group {
-            parsing_uid,
-            name: name.into(),
-            attr: Attr::new(),
-            size,
-            kind: GroupKind::Node
-        }
-    }
-
-    pub fn elements<N: Into<String>>(parsing_uid: u64,
-                                     name: N,
-                                     size: Option<usize>) -> Group
-    */
-
     pub fn attr(&self) -> &Attr {
         &self.attr
     }
 
-    pub fn size(&self) -> Option<usize> {
-        self.size
-    }
-
     pub fn kind(&self) -> GroupKind {
         self.kind
+    }
+
+    pub fn name(&self) -> &Name {
+        &self.name
+    }
+
+    pub fn size(&self) -> Option<usize> {
+        self.size
     }
 }

@@ -25,5 +25,5 @@ fn simple_ser_medit() {
 
     let ser = MeditSerializer::new();
     let output = File::create("tests/output1.mesh").unwrap();
-    ser.serialize(&mesh, output);
+    ser.serialize(&mesh, output).unwrap();
 }

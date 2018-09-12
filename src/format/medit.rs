@@ -1,4 +1,4 @@
-//!
+//! Implementation of MEDIT mesh format support.
 //!
 //! Defined in [https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf](ISSN 0249-0803) .
 
@@ -45,6 +45,7 @@ impl From<DeserializerError> for DeserializeError {
     }
 }
 
+#[derive(Debug)]
 pub enum SerializeError {
     InvalidElementGroup(String),
     Io(io::Error),
@@ -217,7 +218,7 @@ impl MeditDeserializer {
                     let group_name = Name::parse_node(keyword.into(), Format::Medit).unwrap();
                     let group =
                         Group::new(parsing_uid, group_name, Some(num_nodes), GroupKind::Node);
-                    target.de_group_begin(&group);
+                    target.de_group_begin(&group)?;
 
                     for _ in 0..num_nodes {
                         let mut position = DVector::<f64>::zeros(dimension);
@@ -232,7 +233,7 @@ impl MeditDeserializer {
                         target.de_node(position, attr, &group)?;
                     }
 
-                    target.de_group_end(&group);
+                    target.de_group_end(&group)?;
                 }
                 "Edges" | "Triangles" | "Quadrilaterals" | "Tetrahedra" | "Hexahedra" => {
                     let num_elements: usize = reader.get_val()?;
@@ -247,7 +248,7 @@ impl MeditDeserializer {
                         Some(num_elements),
                         GroupKind::Element,
                     );
-                    target.de_group_begin(&group);
+                    target.de_group_begin(&group)?;
 
                     for _ in 0..num_elements {
                         let mut indices = DVector::<usize>::from_element(nary, 0);
@@ -259,7 +260,7 @@ impl MeditDeserializer {
                         target.de_element((indices, attr), &group)?;
                     }
 
-                    target.de_group_end(&group);
+                    target.de_group_end(&group)?;
                 }
                 "End" => {
                     // TODO: Maybe it would be better to set a flag and check

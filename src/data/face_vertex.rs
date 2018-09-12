@@ -163,7 +163,7 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
         self.dimension = dim;
     }
 
-    fn de_group_begin(&mut self, group: &Group) {
+    fn de_group_begin(&mut self, group: &Group) -> Result<(), DeserializerError> {
         if group.kind() == GroupKind::Element {
             self.elements.push(ElementGroup {
                 group: group.clone(),
@@ -181,9 +181,12 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
                 },
             });
         }
+        Ok(())
     }
 
-    fn de_group_end(&mut self, group: &Group) {}
+    fn de_group_end(&mut self, _group: &Group) -> Result<(), DeserializerError> {
+        Ok(())
+    }
 
     fn de_node(
         &mut self,
@@ -192,13 +195,15 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
         group: &Group,
     ) -> Result<(), DeserializerError> {
         if let Some(ref mut no_group) = self.nodes.last_mut() {
-            no_group.nodes.push(Node { attr, position });
-            Ok(())
-        } else {
-            Err(DeserializerError::BrokenInvariant(
-                "de_group_begin was not invoked".into(),
-            ))
+            if *group == no_group.group {
+                no_group.nodes.push(Node { attr, position });
+                return Ok(());
+            }
         }
+
+        Err(DeserializerError::BrokenInvariant(
+            "de_group_begin was not invoked".into(),
+        ))
     }
 
     fn de_element<De: DeserializeElement>(
@@ -207,16 +212,18 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
         group: &Group,
     ) -> Result<(), DeserializerError> {
         if let Some(ref mut el_group) = self.elements.last_mut() {
-            el_group.elements.push(Element {
-                attr: element.attr()?,
-                // TODO support non-index formats
-                indices: element.indices()?.unwrap(),
-            });
-            Ok(())
-        } else {
-            Err(DeserializerError::BrokenInvariant(
-                "de_group_begin was not invoked".into(),
-            ))
+            if *group == el_group.group {
+                el_group.elements.push(Element {
+                    attr: element.attr()?.into_owned(),
+                    // TODO support non-index formats
+                    indices: element.indices()?.unwrap().into_owned(),
+                });
+                return Ok(());
+            }
         }
+
+        Err(DeserializerError::BrokenInvariant(
+            "de_group_begin was not invoked".into(),
+        ))
     }
 }

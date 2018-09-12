@@ -5,6 +5,7 @@
 
 use data::{Attr, Group};
 use nalgebra::DVector;
+use std::borrow::Cow;
 
 /// An error which can occur during mesh deserialization.
 #[derive(Debug, Fail)]
@@ -17,19 +18,17 @@ pub enum DeserializerError {
 }
 
 pub trait DeserializeElement {
-    fn indices(&mut self) -> Result<Option<DVector<usize>>, DeserializerError>;
-    fn attr(&mut self) -> Result<Attr, DeserializerError>;
+    fn indices(&mut self) -> Result<Option<Cow<DVector<usize>>>, DeserializerError>;
+    fn attr(&mut self) -> Result<Cow<Attr>, DeserializerError>;
 }
 
 impl DeserializeElement for (DVector<usize>, Attr) {
-    fn indices(&mut self) -> Result<Option<DVector<usize>>, DeserializerError> {
-        // TODO: this is bad
-        Ok(Some(self.0.clone()))
+    fn indices(&mut self) -> Result<Option<Cow<DVector<usize>>>, DeserializerError> {
+        Ok(Some(Cow::Borrowed(&self.0)))
     }
 
-    fn attr(&mut self) -> Result<Attr, DeserializerError> {
-        // TODO: this could be even worse
-        Ok(self.1.clone())
+    fn attr(&mut self) -> Result<Cow<Attr>, DeserializerError> {
+        Ok(Cow::Borrowed(&self.1))
     }
 }
 
@@ -37,9 +36,12 @@ impl DeserializeElement for (DVector<usize>, Attr) {
 pub trait DeserializeMesh {
     fn de_dimension(&mut self, dim: u8);
 
-    // TODO: should these methods also result a result?
-    fn de_group_begin(&mut self, _group: &Group) {}
-    fn de_group_end(&mut self, _group: &Group) {}
+    fn de_group_begin(&mut self, _group: &Group) -> Result<(), DeserializerError> {
+        Ok(())
+    }
+    fn de_group_end(&mut self, _group: &Group) -> Result<(), DeserializerError> {
+        Ok(())
+    }
 
     /// Deserialize a node at a position and with attributes.
     ///

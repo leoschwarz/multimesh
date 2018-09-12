@@ -87,6 +87,8 @@ impl Name {
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Copy)]
 pub enum Format {
     Medit,
+    // TODO: Allow formats other than the ones implemented together with this crate.
+    //Other(String),
 }
 
 #[cfg(test)]

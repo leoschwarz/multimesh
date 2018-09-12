@@ -1,4 +1,4 @@
-// TODO: this could be rather useful, once Try trait is stabilized
+// TODO: this cseriould be rather useful, once Try trait is stabilized
 
 pub enum WResult<T, W, E> {
     Ok(T),
