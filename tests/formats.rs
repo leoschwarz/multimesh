@@ -1,27 +1,25 @@
 extern crate multimesh;
 
 use multimesh::data::face_vertex::Mesh;
+use multimesh::de::Deserializer;
 use multimesh::format::medit::{MeditDeserializer, MeditSerializer};
-use multimesh::ser::{SerializableMesh, Serializer};
+use multimesh::ser::Serializer;
 use std::fs::File;
 
 #[test]
 fn simple_de_medit() {
     let data = include_bytes!("files/blender-monkey.mesh");
     let mut mesh: Mesh = Mesh::default();
-    MeditDeserializer::read(&data[..], &mut mesh).unwrap();
+    MeditDeserializer::deserialize_into(&data[..], &mut mesh).unwrap();
 
-    // TODO: this reference-requirement is stupid!!
-    assert_eq!((&mesh).metadata().dimension(), 3);
-
-    //MeditDeserializer::read(&data[..], &mut mesh).expect("reading failed");
+    assert_eq!(mesh.metadata().dimension(), 3);
 }
 
 #[test]
 fn simple_ser_medit() {
     let data = include_bytes!("files/blender-monkey.mesh");
     let mut mesh: Mesh = Mesh::default();
-    MeditDeserializer::read(&data[..], &mut mesh).unwrap();
+    MeditDeserializer::deserialize_into(&data[..], &mut mesh).unwrap();
 
     let ser = MeditSerializer::new();
     let output = File::create("tests/output1.mesh").unwrap();

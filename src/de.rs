@@ -6,6 +6,16 @@
 use data::{Attr, Group};
 use nalgebra::DVector;
 use std::borrow::Cow;
+use std::io::Read;
+
+pub trait Deserializer {
+    type Error;
+
+    fn deserialize_into<S, T>(source: S, target: T) -> Result<(), Self::Error>
+    where
+        S: Read,
+        T: DeserializeMesh;
+}
 
 /// An error which can occur during mesh deserialization.
 #[derive(Debug, Fail)]

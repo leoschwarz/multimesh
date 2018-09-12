@@ -130,6 +130,12 @@ impl<'m> Iterator for ElementGroupsIterator<'m> {
     }
 }
 
+impl Mesh {
+    pub fn metadata(&self) -> MeshMetadata {
+        SerializableMesh::metadata(&self)
+    }
+}
+
 impl<'m> SerializableMesh for &'m Mesh {
     type Node = &'m Node;
     type NodeGroup = &'m NodeGroup;

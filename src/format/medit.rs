@@ -3,16 +3,14 @@
 //! Defined in [https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf](ISSN 0249-0803) .
 
 use data::{Attr, Group, GroupKind};
+use de::Deserializer;
 use de::{DeserializeMesh, DeserializerError};
 use nalgebra::DVector;
 use naming::Format;
 use naming::Name;
-use regex::Regex;
 use ser::{SerializableElement, SerializableGroup, SerializableMesh, SerializableNode, Serializer};
-use std::collections::VecDeque;
-use std::fmt::Display;
 use std::io::{self, Read, Write};
-use std::str::{FromStr, Lines};
+use util::item_reader::{ItemReader, ItemReaderError};
 
 fn element_nary(element_name: &str) -> Option<usize> {
     match element_name {
@@ -37,11 +35,19 @@ pub enum DeserializeError {
     Parse(String),
 
     Deserializer(DeserializerError),
+
+    Reader(ItemReaderError),
 }
 
 impl From<DeserializerError> for DeserializeError {
     fn from(e: DeserializerError) -> Self {
         DeserializeError::Deserializer(e)
+    }
+}
+
+impl From<ItemReaderError> for DeserializeError {
+    fn from(e: ItemReaderError) -> Self {
+        DeserializeError::Reader(e)
     }
 }
 
@@ -171,9 +177,10 @@ impl Serializer for MeditSerializer {
 
 pub struct MeditDeserializer {}
 
-// TODO convert to trait
-impl MeditDeserializer {
-    pub fn read<S, T>(mut source: S, mut target: T) -> Result<(), DeserializeError>
+impl Deserializer for MeditDeserializer {
+    type Error = DeserializeError;
+
+    fn deserialize_into<S, T>(mut source: S, mut target: T) -> Result<(), DeserializeError>
     where
         S: Read,
         T: DeserializeMesh,
@@ -284,87 +291,5 @@ impl MeditDeserializer {
         }
 
         Ok(())
-    }
-}
-
-struct ItemReader<'s> {
-    lines: Lines<'s>,
-    line_buf: VecDeque<&'s str>,
-}
-
-impl<'s> ItemReader<'s> {
-    fn new(data: &'s str) -> Self {
-        ItemReader {
-            lines: data.lines(),
-            line_buf: VecDeque::new(),
-        }
-    }
-
-    fn get_val<T>(&mut self) -> Result<T, DeserializeError>
-    where
-        T: FromStr,
-        <T as FromStr>::Err: Display,
-    {
-        self.get_next().and_then(|s| {
-            s.parse()
-                .map_err(|e| DeserializeError::Parse(format!("Parse value failed: {}", e)))
-        })
-    }
-
-    fn get_next(&mut self) -> Result<&'s str, DeserializeError> {
-        self.next()
-            .ok_or_else(|| DeserializeError::Parse("Unexpected EOF".into()))
-    }
-}
-
-impl<'s> Iterator for ItemReader<'s> {
-    type Item = &'s str;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let probe_buf = |line_buf: &mut VecDeque<&'s str>| {
-            while let Some(item) = line_buf.remove(0) {
-                if !item.trim().is_empty() {
-                    return Some(item);
-                }
-            }
-            None
-        };
-
-        if let Some(item) = probe_buf(&mut self.line_buf) {
-            return Some(item);
-        }
-
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"\s+").unwrap();
-        }
-
-        while let Some(line) = self.lines.next() {
-            if !line.starts_with("#") && !line.trim().is_empty() {
-                self.line_buf.extend(RE.split(line));
-                if let Some(item) = probe_buf(&mut self.line_buf) {
-                    return Some(item);
-                }
-            }
-        }
-
-        None
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn item_reader() {
-        let source = " abc   xyz  -1\n\r\t \n  abc xyz";
-        let mut reader = ItemReader::new(source);
-
-        assert_eq!(reader.next(), "abc".into());
-        assert_eq!(reader.next(), "xyz".into());
-        assert_eq!(reader.next(), "-1".into());
-        assert_eq!(reader.next(), "abc".into());
-        assert_eq!(reader.next(), "xyz".into());
-        assert_eq!(reader.next(), None);
     }
 }
