@@ -15,6 +15,9 @@ pub enum DeserializerError {
 
     #[fail(display = "Implementor of multimesh traits broke invariant, or internal bug: {:?}", _0)]
     BrokenInvariant(String),
+
+    #[fail(display = "Other error: {:?}", _0)]
+    Other(Box<::std::error::Error + Send + Sync>),
 }
 
 pub trait DeserializeElement {
@@ -36,9 +39,12 @@ impl DeserializeElement for (DVector<usize>, Attr) {
 pub trait DeserializeMesh {
     fn de_dimension(&mut self, dim: u8);
 
+    /// Invoked immediately before deserializing a group of entities.
     fn de_group_begin(&mut self, _group: &Group) -> Result<(), DeserializerError> {
         Ok(())
     }
+
+    /// Invoked immediately after deserializing a group of entities.
     fn de_group_end(&mut self, _group: &Group) -> Result<(), DeserializerError> {
         Ok(())
     }

@@ -5,6 +5,7 @@ use data::*;
 use de::*;
 use nalgebra::DVector;
 use ser::*;
+use std::borrow::Cow;
 
 /// A mesh represented in face-vertex form, referred to as elements and nodes in the following.
 ///
@@ -42,12 +43,12 @@ pub struct ElementGroup {
 }
 
 impl<'m> SerializableNode for &'m Node {
-    fn position(&self) -> &DVector<f64> {
-        &self.position
+    fn position(&self) -> Cow<DVector<f64>> {
+        Cow::Borrowed(&self.position)
     }
 
-    fn attr(&self) -> &Attr {
-        &self.attr
+    fn attr(&self) -> Cow<Attr> {
+        Cow::Borrowed(&self.attr)
     }
 }
 
@@ -105,12 +106,12 @@ impl<'m> SerializableGroup for &'m ElementGroup {
 }
 
 impl<'m> SerializableElement for &'m Element {
-    fn node_indices(&self) -> Option<&DVector<usize>> {
-        Some(&self.indices)
+    fn node_indices(&self) -> Option<Cow<DVector<usize>>> {
+        Some(Cow::Borrowed(&self.indices))
     }
 
-    fn attr(&self) -> &Attr {
-        &self.attr
+    fn attr(&self) -> Cow<Attr> {
+        Cow::Borrowed(&self.attr)
     }
 }
 

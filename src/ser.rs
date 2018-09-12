@@ -3,6 +3,7 @@
 use data::Attr;
 use nalgebra::DVector;
 use naming::Name;
+use std::borrow::Cow;
 use std::io::Write;
 
 pub trait Serializer {
@@ -15,15 +16,15 @@ pub trait Serializer {
 }
 
 pub trait SerializableNode {
-    fn position(&self) -> &DVector<f64>;
-    fn attr(&self) -> &Attr;
+    fn position(&self) -> Cow<DVector<f64>>;
+    fn attr(&self) -> Cow<Attr>;
 }
 
 pub trait SerializableElement {
-    fn node_indices(&self) -> Option<&DVector<usize>>;
+    fn node_indices(&self) -> Option<Cow<DVector<usize>>>;
     // TODO use matrix type?
     //fn node_positions(&self) -> Option<&DVector<f64>>
-    fn attr(&self) -> &Attr;
+    fn attr(&self) -> Cow<Attr>;
 }
 
 #[derive(Clone, Debug)]
