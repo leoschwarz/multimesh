@@ -84,6 +84,13 @@ impl Hash for Group {
 pub enum GroupKind {
     Node,
     Element,
+
+    /*
+    // TODO: Would Property be general enough for all other kinds of elements, or would we need
+    //       some kind of distinction?
+    Vector,
+    Property
+    */
 }
 
 impl Group {

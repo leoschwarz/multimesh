@@ -26,26 +26,38 @@ impl<'s> ItemReader<'s> {
         }
     }
 
-    pub(crate) fn get_val<T>(&mut self) -> Result<T, ItemReaderError>
+    pub(crate) fn next_parse<T>(&mut self) -> Result<T, ItemReaderError>
     where
         T: FromStr,
         <T as FromStr>::Err: Display,
     {
-        self.get_next().and_then(|s| {
+        self.next_result().and_then(|s| {
             s.parse()
                 .map_err(|e| ItemReaderError::Parse(format!("{}", e)))
         })
     }
 
-    pub(crate) fn get_next(&mut self) -> Result<&'s str, ItemReaderError> {
+    pub(crate) fn next_result(&mut self) -> Result<&'s str, ItemReaderError> {
         self.next().ok_or(ItemReaderError::UnexpectedEof)
     }
-}
 
-impl<'s> Iterator for ItemReader<'s> {
-    type Item = &'s str;
+    /// Read all items until the end of the current line.
+    pub(crate) fn next_until_eol(&mut self) -> Option<&'s str> {
+        self.next_item(false)
+    }
 
-    fn next(&mut self) -> Option<Self::Item> {
+    pub(crate) fn next_parse_until_eol<T>(&mut self) -> Result<T, ItemReaderError>
+        where
+            T: FromStr,
+            <T as FromStr>::Err: Display,
+    {
+        self.next_until_eol().ok_or(ItemReaderError::UnexpectedEof).and_then(|s| {
+            s.parse()
+                .map_err(|e| ItemReaderError::Parse(format!("{}", e)))
+        })
+    }
+
+    fn next_item(&mut self, ignore_newline: bool) -> Option<&'s str> {
         let probe_buf = |line_buf: &mut VecDeque<&'s str>| {
             while let Some(item) = line_buf.remove(0) {
                 if !item.trim().is_empty() {
@@ -70,9 +82,21 @@ impl<'s> Iterator for ItemReader<'s> {
                     return Some(item);
                 }
             }
+
+            if !ignore_newline {
+                return None;
+            }
         }
 
         None
+    }
+}
+
+impl<'s> Iterator for ItemReader<'s> {
+    type Item = &'s str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_item(true)
     }
 }
 

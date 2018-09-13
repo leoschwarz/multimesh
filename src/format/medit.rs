@@ -199,7 +199,7 @@ impl Deserializer for MeditDeserializer {
         while let Some(keyword) = reader.next() {
             match keyword {
                 "MeshVersionFormatted" => {
-                    let version: &str = reader.get_next()?;
+                    let version: &str = reader.next_result()?;
                     if version != "1" {
                         return Err(DeserializeError::Parse(format!(
                             "Unsupported version: {}",
@@ -209,7 +209,7 @@ impl Deserializer for MeditDeserializer {
                 }
                 "Dimension" => {
                     dimension = reader
-                        .get_next()?
+                        .next_result()?
                         .parse()
                         .map_err(|_| DeserializeError::Parse("Dimension".into()))?;
                     target.de_dimension(dimension as u8);
@@ -219,7 +219,7 @@ impl Deserializer for MeditDeserializer {
                         return Err(DeserializeError::Parse("Bad dimension.".into()));
                     }
 
-                    let num_nodes: usize = reader.get_val()?;
+                    let num_nodes: usize = reader.next_parse()?;
 
                     parsing_uid += 1;
                     let group_name = Name::parse_node(keyword.into(), Format::Medit).unwrap();
@@ -230,11 +230,11 @@ impl Deserializer for MeditDeserializer {
                     for _ in 0..num_nodes {
                         let mut position = DVector::<f64>::zeros(dimension);
                         for i in 0..dimension {
-                            position[i] = reader.get_val()?;
+                            position[i] = reader.next_parse()?;
                         }
                         let mut attr = Attr::new();
                         if keyword == "Vertices" {
-                            attr.insert(0, reader.get_val()?);
+                            attr.insert(0, reader.next_parse()?);
                         }
 
                         target.de_node(position, attr, &group)?;
@@ -243,7 +243,7 @@ impl Deserializer for MeditDeserializer {
                     target.de_group_end(&group)?;
                 }
                 "Edges" | "Triangles" | "Quadrilaterals" | "Tetrahedra" | "Hexahedra" => {
-                    let num_elements: usize = reader.get_val()?;
+                    let num_elements: usize = reader.next_parse()?;
                     // Note: Should never fail by definition of `element_nary`.
                     let nary = element_nary(keyword).unwrap();
 
@@ -260,10 +260,10 @@ impl Deserializer for MeditDeserializer {
                     for _ in 0..num_elements {
                         let mut indices = DVector::<usize>::from_element(nary, 0);
                         for i_no in 0..nary {
-                            indices[i_no] = reader.get_val()?;
+                            indices[i_no] = reader.next_parse()?;
                         }
                         let mut attr = Attr::new();
-                        attr.insert(0, reader.get_val()?);
+                        attr.insert(0, reader.next_parse()?);
                         target.de_element((indices, attr), &group)?;
                     }
 
