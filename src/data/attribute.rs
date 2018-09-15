@@ -1,4 +1,5 @@
 use data::mesh::ReadEntity;
+use error::Error;
 use std::collections::BTreeMap;
 
 /// The name of an attribute.
@@ -55,9 +56,9 @@ impl Attr {
         self.values.len()
     }
 
-    pub(crate) fn from_entity<R, E>(de: &R) -> Result<Self, E>
+    pub(crate) fn from_entity<R>(de: &R) -> Result<Self, Error>
     where
-        R: ReadEntity<Error = E>,
+        R: ReadEntity,
     {
         let mut attr = Attr::new();
         // TODO: Consider using Iterator instead.

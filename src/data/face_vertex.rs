@@ -8,6 +8,7 @@ use data::mesh::ReadNode;
 use data::mesh::ReadVector;
 use data::*;
 use de::*;
+use error::Error;
 use nalgebra::DVector;
 use ser::*;
 use std::borrow::Cow;
@@ -28,41 +29,39 @@ pub struct Mesh {
 
 #[derive(Clone, Debug)]
 pub struct Entity {
-    attr: Attr,
+    pub attr: Attr,
 }
 
 #[derive(Clone, Debug)]
 pub struct Node {
-    position: DVector<f64>,
-    attr: Attr,
+    pub position: DVector<f64>,
+    pub attr: Attr,
 }
 
 #[derive(Clone, Debug)]
 pub struct Element {
-    indices: DVector<usize>,
-    attr: Attr,
+    pub indices: DVector<usize>,
+    pub attr: Attr,
 }
 
 #[derive(Clone, Debug)]
 pub struct Vector {
-    components: DVector<f64>,
-    attr: Attr,
+    pub components: DVector<f64>,
+    pub attr: Attr,
 }
 
 macro_rules! impl_read_entity {
     ($target:ident) => {
         impl<'m> ReadEntity for &'m $target {
-            type Error = ();
+            fn attr(&self, name: &AttrName) -> Result<Option<Cow<str>>, Error> {
+                Ok(self.attr.get(name).map(|s| s.into()))
+            }
 
-            fn attr_at(&self, index: usize) -> Result<Option<(Cow<AttrName>, Cow<str>)>, ()> {
+            fn attr_at(&self, index: usize) -> Result<Option<(Cow<AttrName>, Cow<str>)>, Error> {
                 Ok(self
                     .attr
                     .get_at(index)
                     .map(|(n, v)| (Cow::Borrowed(n), Cow::Borrowed(v.as_ref()))))
-            }
-
-            fn attr_get(&self, name: &AttrName) -> Result<Option<Cow<str>>, ()> {
-                Ok(self.attr.get(name).map(|s| s.into()))
             }
         }
     };
@@ -74,19 +73,19 @@ impl_read_entity!(Element);
 impl_read_entity!(Vector);
 
 impl<'m> ReadNode for &'m Node {
-    fn position(&self) -> Result<Cow<DVector<f64>>, ()> {
+    fn position(&self) -> Result<Cow<DVector<f64>>, Error> {
         Ok(Cow::Borrowed(&self.position))
     }
 }
 
 impl<'m> ReadElement for &'m Element {
-    fn node_indices(&self) -> Result<Option<Cow<DVector<usize>>>, ()> {
+    fn node_indices(&self) -> Result<Option<Cow<DVector<usize>>>, Error> {
         Ok(Some(Cow::Borrowed(&self.indices)))
     }
 }
 
 impl<'m> ReadVector for &'m Vector {
-    fn components(&self) -> Result<Cow<DVector<f64>>, ()> {
+    fn components(&self) -> Result<Cow<DVector<f64>>, Error> {
         Ok(Cow::Borrowed(&self.components))
     }
 }
@@ -203,7 +202,7 @@ fn impl_de_entity<E>(
     entity: E,
     target: &mut Vec<Group<E>>,
     group_data: &GroupData,
-) -> Result<(), DeserializerError> {
+) -> Result<(), Error> {
     if let Some(ref mut group) = target.last_mut() {
         if *group_data == group.data {
             group.items.push(entity);
@@ -211,7 +210,7 @@ fn impl_de_entity<E>(
         }
     }
 
-    Err(DeserializerError::BrokenInvariant(
+    Err(Error::BrokenInvariant(
         "de_group_begin was not invoked".into(),
     ))
 }
@@ -221,7 +220,7 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
         self.dimension = dim;
     }
 
-    fn de_group_begin(&mut self, group_data: &GroupData) -> Result<(), DeserializerError> {
+    fn de_group_begin(&mut self, group_data: &GroupData) -> Result<(), Error> {
         match group_data.kind() {
             GroupKind::Node => self.nodes.push(Group::new_empty(group_data.clone())),
             GroupKind::Element => self.elements.push(Group::new_empty(group_data.clone())),
@@ -232,35 +231,48 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
         Ok(())
     }
 
-    fn de_group_end(&mut self, _group: &GroupData) -> Result<(), DeserializerError> {
+    fn de_group_end(&mut self, _group_data: &GroupData) -> Result<(), Error> {
         Ok(())
     }
 
-    fn de_entity<R>(&mut self, entity: &R, group_data: &GroupData) -> Result<(), DeserializerError>
+    fn de_entity<R>(&mut self, entity: &R, group_data: &GroupData) -> Result<(), Error>
     where
-        R: ReadEntity<Error = DeserializerError>,
+        R: ReadEntity,
     {
         let attr = Attr::from_entity(entity)?;
         impl_de_entity(Entity { attr }, &mut self.others, group_data)
     }
 
-    fn de_node<R>(&mut self, node: &R, group_data: &GroupData) -> Result<(), DeserializerError>
+    fn de_node<R>(&mut self, node: &R, group_data: &GroupData) -> Result<(), Error>
     where
-        R: ReadNode<Error = DeserializerError>,
+        R: ReadNode,
     {
         let attr = Attr::from_entity(node)?;
         let position = node.position()?.into_owned();
         impl_de_entity(Node { attr, position }, &mut self.nodes, group_data)
     }
 
-    // TODO
-    /*
-    fn de_element<De: DeserializeElement>(&mut self, element: De, group: &GroupData) -> Result<(), DeserializerError> {
-        unimplemented!()
+    fn de_element<R>(&mut self, element: &R, group_data: &GroupData) -> Result<(), Error>
+    where
+        R: ReadElement,
+    {
+        let attr = Attr::from_entity(element)?;
+        // TODO
+        let indices = element
+            .node_indices()?
+            .ok_or_else(|| {
+                Error::BrokenInvariant("Elements without node indices are not allowed yet.".into())
+            })?
+            .into_owned();
+        impl_de_entity(Element { attr, indices }, &mut self.elements, group_data)
     }
 
-    fn de_vector<De: DeserializeVector>(&mut self, vector: De, group: &GroupData) -> Result<(), DeserializerError> {
-        unimplemented!()
+    fn de_vector<R>(&mut self, vector: &R, group_data: &GroupData) -> Result<(), Error>
+    where
+        R: ReadVector,
+    {
+        let attr = Attr::from_entity(vector)?;
+        let components = vector.components()?.into_owned();
+        impl_de_entity(Vector { attr, components }, &mut self.vectors, group_data)
     }
-    */
 }

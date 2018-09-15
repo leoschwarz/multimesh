@@ -2,15 +2,20 @@
 //!
 //! Defined in [https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf](ISSN 0249-0803) .
 
+use data::face_vertex;
+use data::mesh::{ReadElement, ReadEntity, ReadNode, ReadVector};
+use data::AttrName;
 use data::{attribute::Attr, GroupData, GroupKind};
-use data::mesh::{ReadVector,ReadEntity,ReadNode,ReadElement};
+use de::DeserializeMesh;
 use de::Deserializer;
-use de::{DeserializeMesh, DeserializerError};
+use error::Error;
 use nalgebra::DVector;
 use naming::Format;
 use naming::Name;
 use ser::{SerializableGroup, SerializableMesh, Serializer};
+use std::borrow::Cow;
 use std::io::{self, Read, Write};
+use std::str::FromStr;
 use util::item_reader::{ItemReader, ItemReaderError};
 
 fn element_nary(element_name: &str) -> Option<usize> {
@@ -21,46 +26,6 @@ fn element_nary(element_name: &str) -> Option<usize> {
         "Tetrahedra" => Some(4),
         "Hexahedra" => Some(8),
         _ => None,
-    }
-}
-
-#[derive(Debug)]
-pub enum DeserializeError {
-    /// There was a problem with I/O.
-    Io(io::Error),
-
-    /// Unsupported version or format encountered.
-    Unsupported(String),
-
-    /// Parsing the data failed for one of many possible reasons.
-    Parse(String),
-
-    Deserializer(DeserializerError),
-
-    Reader(ItemReaderError),
-}
-
-impl From<DeserializerError> for DeserializeError {
-    fn from(e: DeserializerError) -> Self {
-        DeserializeError::Deserializer(e)
-    }
-}
-
-impl From<ItemReaderError> for DeserializeError {
-    fn from(e: ItemReaderError) -> Self {
-        DeserializeError::Reader(e)
-    }
-}
-
-#[derive(Debug)]
-pub enum SerializeError {
-    InvalidElementGroup(String),
-    Io(io::Error),
-}
-
-impl From<io::Error> for SerializeError {
-    fn from(e: io::Error) -> Self {
-        SerializeError::Io(e)
     }
 }
 
@@ -87,10 +52,10 @@ impl MeditSerializer {
         for group in groups {
             let group_metadata = group.metadata();
             // TODO: Rename error to "InvalidGroup".
-            let group_name = group_metadata
+            let group_name: Cow<str> = group_metadata
                 .name()
                 .get_as(Format::Medit)
-                .ok_or_else(|| SerializeError::InvalidElementGroup("No name".into()))?;
+                .ok_or_else(|| format_err!("Element group without name."))?;
 
             writeln!(target, "{}\n{}", group_name, group.len())?;
 
@@ -108,11 +73,13 @@ impl MeditSerializer {
 
     fn serialize_node<N, W>(node: N, mut target: W, mesh_dim: u8) -> <Self as Serializer>::Result
     where
-        N: SerializableNode,
+        N: ReadNode,
         W: Write,
     {
-        let p = node.position();
-        let attr = node.attr().get(0).unwrap_or(0.);
+        let p = node.position()?;
+        let attr = node
+            .attr(&AttrName::Index(0))?
+            .unwrap_or(Cow::Borrowed("0"));
         if mesh_dim == 2 {
             writeln!(target, "{} {} {}", p[0], p[1], attr)?;
         } else if mesh_dim == 3 {
@@ -130,11 +97,13 @@ impl MeditSerializer {
         nary: usize,
     ) -> <Self as Serializer>::Result
     where
-        E: SerializableElement,
+        E: ReadElement,
         W: Write,
     {
-        let is = element.node_indices().unwrap();
-        let attr = element.attr().get(0).unwrap_or(0.);
+        let is = element.node_indices()?.unwrap();
+        let attr = element
+            .attr(&AttrName::Index(0))?
+            .unwrap_or(Cow::Borrowed("0"));
 
         for j in 0..nary {
             write!(target, "{} ", is[j])?;
@@ -145,7 +114,7 @@ impl MeditSerializer {
 }
 
 impl Serializer for MeditSerializer {
-    type Result = Result<(), SerializeError>;
+    type Result = Result<(), ::failure::Error>;
 
     fn serialize<M, W>(&self, mesh: M, mut target: W) -> Self::Result
     where
@@ -179,18 +148,16 @@ impl Serializer for MeditSerializer {
 pub struct MeditDeserializer {}
 
 impl Deserializer for MeditDeserializer {
-    type Error = DeserializeError;
+    type Error = Error;
 
-    fn deserialize_into<S, T>(mut source: S, mut target: T) -> Result<(), DeserializeError>
+    fn deserialize_into<S, T>(mut source: S, mut target: T) -> Result<(), Error>
     where
         S: Read,
         T: DeserializeMesh,
     {
         // Read the file into memory.
         let mut data = String::new();
-        source
-            .read_to_string(&mut data)
-            .map_err(|e| DeserializeError::Io(e))?;
+        source.read_to_string(&mut data)?;
         let mut reader = ItemReader::new(data.as_ref());
 
         // Read data.
@@ -202,22 +169,19 @@ impl Deserializer for MeditDeserializer {
                 "MeshVersionFormatted" => {
                     let version: &str = reader.next_result()?;
                     if version != "1" {
-                        return Err(DeserializeError::Parse(format!(
-                            "Unsupported version: {}",
-                            version
-                        )));
+                        return Err(Error::Syntax(format!("Unsupported version: {}", version)));
                     }
                 }
                 "Dimension" => {
                     dimension = reader
                         .next_result()?
                         .parse()
-                        .map_err(|_| DeserializeError::Parse("Dimension".into()))?;
+                        .map_err(|_| Error::Syntax("Unexpected EOF after 'Dimension'.".into()))?;
                     target.de_dimension(dimension as u8);
                 }
                 "Vertices" | "Normals" | "Tangents" => {
                     if dimension != 3 {
-                        return Err(DeserializeError::Parse("Bad dimension.".into()));
+                        return Err(Error::Syntax("Bad dimension (must be 3).".into()));
                     }
 
                     let num_nodes: usize = reader.next_parse()?;
@@ -235,10 +199,11 @@ impl Deserializer for MeditDeserializer {
                         }
                         let mut attr = Attr::new();
                         if keyword == "Vertices" {
-                            attr.insert(0, reader.next_parse()?);
+                            attr.insert(AttrName::Index(0), reader.next_parse()?);
                         }
 
-                        target.de_node(position, attr, &group)?;
+                        // TODO: the double reference is not that optimal
+                        target.de_node(&&face_vertex::Node { position, attr }, &group)?;
                     }
 
                     target.de_group_end(&group)?;
@@ -264,8 +229,8 @@ impl Deserializer for MeditDeserializer {
                             indices[i_no] = reader.next_parse()?;
                         }
                         let mut attr = Attr::new();
-                        attr.insert(0, reader.next_parse()?);
-                        target.de_element((indices, attr), &group)?;
+                        attr.insert(AttrName::Index(0), reader.next_parse()?);
+                        target.de_element(&(indices, attr), &group)?;
                     }
 
                     target.de_group_end(&group)?;
@@ -282,10 +247,7 @@ impl Deserializer for MeditDeserializer {
                     if other.trim().is_empty() || other.starts_with("#") {
                         // Ignore.
                     } else {
-                        return Err(DeserializeError::Parse(format!(
-                            "Unsupported keyword: {}",
-                            other
-                        )));
+                        return Err(Error::Syntax(format!("Unsupported keyword: {}", other)));
                     }
                 }
             }

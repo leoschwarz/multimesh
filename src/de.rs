@@ -6,6 +6,7 @@
 use data::attribute::Attr;
 use data::mesh::{ReadElement, ReadEntity, ReadNode, ReadVector};
 use data::{AttrName, GroupData};
+use error::Error;
 use nalgebra::DVector;
 use std::borrow::Cow;
 use std::io::Read;
@@ -19,45 +20,33 @@ pub trait Deserializer {
         T: DeserializeMesh;
 }
 
-/// An error which can occur during mesh deserialization.
-#[derive(Debug, Fail)]
-pub enum DeserializerError {
-    #[fail(display = "Deserializing failed due to IO error: {:?}", _0)]
-    Io(::std::io::Error),
-
-    #[fail(display = "Implementor of multimesh traits broke invariant, or internal bug: {:?}", _0)]
-    BrokenInvariant(String),
-
-    #[fail(display = "Other error: {:?}", _0)]
-    Other(Box<::std::error::Error + Send + Sync>),
-}
-
 /// Ability to receive a mesh being deserialized.
 pub trait DeserializeMesh {
     fn de_dimension(&mut self, dim: u8);
 
     /// Invoked immediately before deserializing a group of entities.
-    fn de_group_begin(&mut self, _group: &GroupData) -> Result<(), DeserializerError> {
+    fn de_group_begin(&mut self, _group: &GroupData) -> Result<(), Error> {
         Ok(())
     }
 
     /// Invoked immediately after deserializing a group of entities.
-    fn de_group_end(&mut self, _group: &GroupData) -> Result<(), DeserializerError> {
+    fn de_group_end(&mut self, _group: &GroupData) -> Result<(), Error> {
         Ok(())
     }
 
     /// Invoked for each entity of a group, unless one of the more specific handlers is invoked.
-    fn de_entity<R>(&mut self, entity: &R, group: &GroupData) -> Result<(), DeserializerError>
+    fn de_entity<R>(&mut self, entity: &R, group: &GroupData) -> Result<(), Error>
     where
-        R: ReadEntity<Error = DeserializerError>;
+        R: ReadEntity;
+    //R: ReadEntity<Error = Self::Error>;
 
     /// Invoked for node/vertex entities instead of `de_entity` if the format metadata defines
     /// the entity as a node entity.
     ///
     /// The default implementation invokes `de_entity` as a fallback.
-    fn de_node<R>(&mut self, node: &R, group: &GroupData) -> Result<(), DeserializerError>
+    fn de_node<R>(&mut self, node: &R, group: &GroupData) -> Result<(), Error>
     where
-        R: ReadNode<Error = DeserializerError>,
+        R: ReadNode,
     {
         self.de_entity(node, group)
     }
@@ -66,9 +55,9 @@ pub trait DeserializeMesh {
     /// defines the entity as a element entity.
     ///
     /// The default implementation invokes `de_entity` as a fallback.
-    fn de_element<R>(&mut self, element: &R, group: &GroupData) -> Result<(), DeserializerError>
+    fn de_element<R>(&mut self, element: &R, group: &GroupData) -> Result<(), Error>
     where
-        R: ReadElement<Error = DeserializerError>,
+        R: ReadElement,
     {
         self.de_entity(element, group)
     }
@@ -77,9 +66,9 @@ pub trait DeserializeMesh {
     /// defines the entity as a vector entity.
     ///
     /// The default implementation invokes `de_entity` as a fallback.
-    fn de_vector<R>(&mut self, vector: &R, group: &GroupData) -> Result<(), DeserializerError>
+    fn de_vector<R>(&mut self, vector: &R, group: &GroupData) -> Result<(), Error>
     where
-        R: ReadVector<Error = DeserializerError>,
+        R: ReadVector,
     {
         self.de_entity(vector, group)
     }

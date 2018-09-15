@@ -1,3 +1,6 @@
+use error::Error;
+use failure::Compat;
+use failure::Fail;
 use regex::Regex;
 use std::collections::VecDeque;
 use std::fmt::Display;
@@ -99,6 +102,12 @@ impl<'s> Iterator for ItemReader<'s> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_item(true)
+    }
+}
+
+impl From<ItemReaderError> for Error {
+    fn from(e: ItemReaderError) -> Error {
+        Error::OtherInternal(Box::new(e.compat()))
     }
 }
 
