@@ -187,9 +187,15 @@ impl Deserializer for MeditDeserializer {
                     let num_nodes: usize = reader.next_parse()?;
 
                     parsing_uid += 1;
-                    let group_name = Name::parse_node(keyword.into(), Format::Medit).unwrap();
+                    let group_kind = if keyword == "Vertices" {
+                        GroupKind::Node
+                    } else {
+                        GroupKind::Vector
+                    };
+                    let group_name =
+                        Name::parse(keyword.into(), Format::Medit, &group_kind).unwrap();
                     let group =
-                        GroupData::new(parsing_uid, group_name, Some(num_nodes), GroupKind::Node);
+                        GroupData::new(parsing_uid, group_name, Some(num_nodes), group_kind);
                     target.de_group_begin(&group)?;
 
                     for _ in 0..num_nodes {
@@ -199,11 +205,28 @@ impl Deserializer for MeditDeserializer {
                         }
                         let mut attr = Attr::new();
                         if keyword == "Vertices" {
-                            attr.insert(AttrName::Index(0), reader.next_parse()?);
+                            attr.insert(
+                                AttrName::Index(0),
+                                reader
+                                    .next()
+                                    .ok_or_else(|| {
+                                        Error::Syntax(
+                                            "Missing expected attribute for vertex.".into(),
+                                        )
+                                    })?
+                                    .into(),
+                            );
+                            // TODO: the double reference is not that optimal
+                            target.de_node(&&face_vertex::Node { position, attr }, &group)?;
+                        } else {
+                            target.de_vector(
+                                &&face_vertex::Vector {
+                                    components: position,
+                                    attr,
+                                },
+                                &group,
+                            )?;
                         }
-
-                        // TODO: the double reference is not that optimal
-                        target.de_node(&&face_vertex::Node { position, attr }, &group)?;
                     }
 
                     target.de_group_end(&group)?;
@@ -214,7 +237,8 @@ impl Deserializer for MeditDeserializer {
                     let nary = element_nary(keyword).unwrap();
 
                     parsing_uid += 1;
-                    let group_name = Name::parse_element(keyword.into(), Format::Medit).unwrap();
+                    let group_name =
+                        Name::parse(keyword.into(), Format::Medit, &GroupKind::Element).unwrap();
                     let group = GroupData::new(
                         parsing_uid,
                         group_name,
@@ -229,8 +253,64 @@ impl Deserializer for MeditDeserializer {
                             indices[i_no] = reader.next_parse()?;
                         }
                         let mut attr = Attr::new();
-                        attr.insert(AttrName::Index(0), reader.next_parse()?);
+                        attr.insert(
+                            AttrName::Index(0),
+                            reader
+                                .next()
+                                .ok_or_else(|| {
+                                    Error::Syntax("Missing expected attribute for Element.".into())
+                                })?
+                                .into(),
+                        );
                         target.de_element(&(indices, attr), &group)?;
+                    }
+
+                    target.de_group_end(&group)?;
+                }
+                "Ridges"
+                | "RequiredEdges"
+                | "Corners"
+                | "RequiredVertices"
+                | "NormalAtVertices"
+                | "NormalAtTriangleVertices"
+                | "NormalAtQuadrilateralVertices"
+                | "TangentAtEdges" => {
+                    let num_elements: usize = reader.next_parse()?;
+                    let n_attrs = match keyword {
+                        "Ridges" | "RequiredEdges" | "Corners" | "RequiredVertices" => 1,
+                        "NormalAtVertices" => 2,
+                        _ => 3,
+                    };
+
+                    parsing_uid += 1;
+                    // TODO
+                    let group_name =
+                        Name::parse(keyword.into(), Format::Medit, &GroupKind::Other).unwrap();
+                    let group = GroupData::new(
+                        parsing_uid,
+                        group_name,
+                        Some(num_elements),
+                        GroupKind::Other,
+                    );
+
+                    target.de_group_begin(&group)?;
+
+                    for _ in 0..num_elements {
+                        let mut attr = Attr::new();
+                        for i in 0..n_attrs {
+                            attr.insert(
+                                AttrName::Index(i),
+                                reader
+                                    .next()
+                                    .ok_or_else(|| {
+                                        Error::Syntax(
+                                            "Missing expected attribute for Other entity.".into(),
+                                        )
+                                    })?
+                                    .into(),
+                            );
+                        }
+                        target.de_entity(&&face_vertex::Entity { attr }, &group)?;
                     }
 
                     target.de_group_end(&group)?;

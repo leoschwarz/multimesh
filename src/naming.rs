@@ -5,10 +5,13 @@
 
 // TODO: How could this work for user defined formats?
 
+use data::GroupKind;
 use std::borrow::Cow;
 
 pub(crate) const NODES_MEDIT: &'static [&'static str] = &[
     "Vertices", // x_i y_i z_i ref_i
+];
+pub(crate) const VECTORS_MEDIT: &'static [&'static str] = &[
     "Normals",  // x_i y_i z_i
     "Tangents", // x_i y_i z_i
 ];
@@ -19,9 +22,6 @@ pub(crate) const ELEMENTS_MEDIT: &'static [&'static str] = &[
     "Tetrahedra",     // v1_i v2_i v3_i v4_i ref_i
     "Hexahedra",      // v1_i v2_i v3_i v4_i v5_i v6_i v7_i v8_i ref_i
 ];
-// TODO: I'm not sure yet what to do about these, technically they could
-// all be handled as elements since they only hold integer references, but
-// this could lead to confusion with mesh elements.
 pub(crate) const OTHER_MEDIT: &'static [&'static str] = &[
     "Ridges",                        // e_i
     "RequiredEdges",                 // e_i
@@ -37,36 +37,31 @@ pub(crate) const OTHER_MEDIT: &'static [&'static str] = &[
 pub struct Name {
     name: String,
     format: Format,
+    kind: GroupKind,
 }
 
 impl Name {
-    pub fn parse_node(s: String, format: Format) -> Option<Self> {
-        match format {
-            Format::Medit => {
-                if NODES_MEDIT.contains(&s.as_str()) {
-                    Some(Name {
-                        name: s,
-                        format: Format::Medit,
-                    })
-                } else {
-                    None
-                }
-            }
+    pub fn parse(s: String, format: Format, kind: &GroupKind) -> Option<Self> {
+        if format != Format::Medit {
+            // TODO FIXME
+            unimplemented!();
         }
-    }
 
-    pub fn parse_element(s: String, format: Format) -> Option<Self> {
-        match format {
-            Format::Medit => {
-                if ELEMENTS_MEDIT.contains(&s.as_str()) {
-                    Some(Name {
-                        name: s,
-                        format: Format::Medit,
-                    })
-                } else {
-                    None
-                }
-            }
+        let ref whitelist = match kind {
+            GroupKind::Node => NODES_MEDIT,
+            GroupKind::Element => ELEMENTS_MEDIT,
+            GroupKind::Vector => VECTORS_MEDIT,
+            GroupKind::Other => OTHER_MEDIT,
+        };
+
+        if whitelist.contains(&s.as_str()) {
+            Some(Name {
+                name: s,
+                format,
+                kind: kind.clone(),
+            })
+        } else {
+            None
         }
     }
 
@@ -97,8 +92,8 @@ mod tests {
 
     #[test]
     fn parse_element_name() {
-        let name1 = Name::parse_element("Triangles".into(), Format::Medit);
-        let name2 = Name::parse_element("Potato".into(), Format::Medit);
+        let name1 = Name::parse("Triangles".into(), Format::Medit, &GroupKind::Element);
+        let name2 = Name::parse("Potato".into(), Format::Medit, &GroupKind::Element);
         assert!(name1.is_some());
         assert!(name2.is_none());
         let name = name1.unwrap();
