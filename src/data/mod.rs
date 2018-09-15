@@ -1,5 +1,4 @@
 use naming::Name;
-use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
 pub mod attribute;

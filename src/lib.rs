@@ -1,4 +1,5 @@
-#![allow(dead_code, unused_imports)]
+#![allow(dead_code)]
+#![allow(unused_import)]
 
 extern crate nalgebra;
 extern crate regex;

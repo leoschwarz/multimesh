@@ -1,5 +1,4 @@
 use error::Error;
-use failure::Compat;
 use failure::Fail;
 use regex::Regex;
 use std::collections::VecDeque;

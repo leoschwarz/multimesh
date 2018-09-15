@@ -3,7 +3,7 @@
 //! Defined in [https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf](ISSN 0249-0803) .
 
 use data::face_vertex;
-use data::mesh::{ReadElement, ReadEntity, ReadNode, ReadVector};
+use data::mesh::{ReadElement, ReadNode};
 use data::AttrName;
 use data::{attribute::Attr, GroupData, GroupKind};
 use de::DeserializeMesh;
@@ -14,9 +14,8 @@ use naming::Format;
 use naming::Name;
 use ser::{SerializableGroup, SerializableMesh, Serializer};
 use std::borrow::Cow;
-use std::io::{self, Read, Write};
-use std::str::FromStr;
-use util::item_reader::{ItemReader, ItemReaderError};
+use std::io::{Read, Write};
+use util::item_reader::ItemReader;
 
 fn element_nary(element_name: &str) -> Option<usize> {
     match element_name {

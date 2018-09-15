@@ -3,12 +3,9 @@
 //! This module is format agnostic, the actual implementations are found within the `format` module
 //! or within custom crates.
 
-use data::attribute::Attr;
 use data::mesh::{ReadElement, ReadEntity, ReadNode, ReadVector};
-use data::{AttrName, GroupData};
+use data::GroupData;
 use error::Error;
-use nalgebra::DVector;
-use std::borrow::Cow;
 use std::io::Read;
 
 pub trait Deserializer {

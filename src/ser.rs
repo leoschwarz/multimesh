@@ -1,13 +1,7 @@
 //! Defines the serialization interface for mesh container types.
 
-use data::mesh::ReadElement;
-use data::mesh::ReadEntity;
-use data::mesh::ReadNode;
-use data::mesh::ReadVector;
-use data::AttrName;
-use nalgebra::DVector;
+use data::mesh::{ReadElement, ReadEntity, ReadNode, ReadVector};
 use naming::Name;
-use std::borrow::Cow;
 use std::io::Write;
 
 pub trait Serializer {
