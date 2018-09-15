@@ -25,7 +25,13 @@ impl From<String> for AttrName {
     }
 }
 
-/// Attributes of nodes or elements.
+/// Holds attributes of entities.
+///
+/// Note that in general this might not be a very efficient solution,
+/// as each instance contains a `BTreeMap` internally.
+/// It's offered for convenience but in practice you might want to
+/// process attributes appropriately while deserializing into your target
+/// data structure.
 #[derive(Clone, Debug)]
 pub struct Attr {
     values: BTreeMap<AttrName, String>,

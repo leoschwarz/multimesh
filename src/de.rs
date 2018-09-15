@@ -9,9 +9,7 @@ use error::Error;
 use std::io::Read;
 
 pub trait Deserializer {
-    type Error;
-
-    fn deserialize_into<S, T>(source: S, target: T) -> Result<(), Self::Error>
+    fn deserialize_into<S, T>(source: S, target: T) -> Result<(), Error>
     where
         S: Read,
         T: DeserializeMesh;

@@ -2,10 +2,11 @@ use naming::Name;
 use std::hash::{Hash, Hasher};
 
 pub mod attribute;
-pub mod face_vertex;
-pub mod mesh;
+pub(crate) mod mesh;
 
+pub mod face_vertex;
 pub use self::attribute::AttrName;
+pub use self::mesh::{ReadElement, ReadEntity, ReadNode, ReadVector};
 
 // TODO: This belongs somewhere else?
 #[derive(Clone, Debug)]

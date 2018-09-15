@@ -1,6 +1,6 @@
 //! Implementation of MEDIT mesh format support.
 //!
-//! Defined in [https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf](ISSN 0249-0803) .
+//! Defined in [ISSN 0249-0803](https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf) (PDF).
 
 use data::face_vertex;
 use data::mesh::{ReadElement, ReadNode};
@@ -147,8 +147,6 @@ impl Serializer for MeditSerializer {
 pub struct MeditDeserializer {}
 
 impl Deserializer for MeditDeserializer {
-    type Error = Error;
-
     fn deserialize_into<S, T>(mut source: S, mut target: T) -> Result<(), Error>
     where
         S: Read,
@@ -192,7 +190,7 @@ impl Deserializer for MeditDeserializer {
                         GroupKind::Vector
                     };
                     let group_name =
-                        Name::parse(keyword.into(), Format::Medit, &group_kind).unwrap();
+                        Name::parse(keyword.into(), Format::Medit, group_kind).unwrap();
                     let group =
                         GroupData::new(parsing_uid, group_name, Some(num_nodes), group_kind);
                     target.de_group_begin(&group)?;
@@ -237,7 +235,7 @@ impl Deserializer for MeditDeserializer {
 
                     parsing_uid += 1;
                     let group_name =
-                        Name::parse(keyword.into(), Format::Medit, &GroupKind::Element).unwrap();
+                        Name::parse(keyword.into(), Format::Medit, GroupKind::Element).unwrap();
                     let group = GroupData::new(
                         parsing_uid,
                         group_name,
@@ -284,7 +282,7 @@ impl Deserializer for MeditDeserializer {
                     parsing_uid += 1;
                     // TODO
                     let group_name =
-                        Name::parse(keyword.into(), Format::Medit, &GroupKind::Other).unwrap();
+                        Name::parse(keyword.into(), Format::Medit, GroupKind::Other).unwrap();
                     let group = GroupData::new(
                         parsing_uid,
                         group_name,

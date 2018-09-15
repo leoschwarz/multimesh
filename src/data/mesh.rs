@@ -59,8 +59,9 @@ pub trait ReadEntity {
     }
 }
 
-// TODO: Using Cow everywhere is actually stupid if there is no way that Cow::Owned
-// can be returned as in general it would require a mutable reference or owned self.
+// TODO: Reevaluate. The motivation for using Cow is that it allows returning references to
+// newly created instances. This is useful because a implementor might provide these methods on the fly
+// without first allocating internally.
 pub trait ReadElement: ReadEntity {
     fn node_indices(&self) -> Result<Option<Cow<DVector<usize>>>, Error>;
 }
@@ -91,15 +92,3 @@ impl ReadElement for (DVector<usize>, Attr) {
         Ok(Some(Cow::Borrowed(&self.0)))
     }
 }
-
-// TODO keep or delete
-/*
-impl<'a, T> DeserializeEntity for &'a T
-where
-    T: DeserializeEntity,
-{
-    fn attr_at(&self, index: usize) -> Option<(AttrName, Cow<str>)> {
-        (*self).attr_at(index)
-    }
-}
-*/

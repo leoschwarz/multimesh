@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-#![allow(unused_import)]
+#![allow(unused_imports)]
 
 extern crate nalgebra;
 extern crate regex;
@@ -7,6 +7,8 @@ extern crate regex;
 extern crate lazy_static;
 #[macro_use]
 extern crate failure;
+
+mod util;
 
 /// Deserialization.
 pub mod de;
@@ -18,6 +20,5 @@ pub mod data;
 pub mod format;
 
 pub mod naming;
-pub mod util;
 
 pub mod error;

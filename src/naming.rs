@@ -41,7 +41,7 @@ pub struct Name {
 }
 
 impl Name {
-    pub fn parse(s: String, format: Format, kind: &GroupKind) -> Option<Self> {
+    pub fn parse(s: String, format: Format, kind: GroupKind) -> Option<Self> {
         if format != Format::Medit {
             // TODO FIXME
             unimplemented!();
@@ -65,8 +65,8 @@ impl Name {
         }
     }
 
-    pub fn get_original(&self) -> (&str, Format) {
-        (self.name.as_ref(), self.format)
+    pub fn get_original(&self) -> (&str, Format, GroupKind) {
+        (self.name.as_ref(), self.format, self.kind)
     }
 
     pub fn get_as(&self, f: Format) -> Option<Cow<str>> {
