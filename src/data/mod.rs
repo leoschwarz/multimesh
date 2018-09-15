@@ -5,8 +5,10 @@ pub mod attribute;
 pub(crate) mod mesh;
 
 pub mod face_vertex;
-pub use self::attribute::AttrName;
-pub use self::mesh::{ReadElement, ReadEntity, ReadNode, ReadVector};
+pub use self::{
+    attribute::AttrName,
+    mesh::{ReadElement, ReadEntity, ReadNode, ReadVector},
+};
 
 // TODO: This belongs somewhere else?
 #[derive(Clone, Debug)]

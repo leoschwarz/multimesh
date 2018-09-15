@@ -1,12 +1,11 @@
 //! Face-vertex mesh representation.
 // TODO(blocked): Const-generics for node and element items?
 
-use data::attribute::Attr;
-use data::mesh::ReadElement;
-use data::mesh::ReadEntity;
-use data::mesh::ReadNode;
-use data::mesh::ReadVector;
-use data::*;
+use data::{
+    attribute::Attr,
+    mesh::{ReadElement, ReadEntity, ReadNode, ReadVector},
+    *,
+};
 use de::*;
 use error::Error;
 use nalgebra::DVector;
@@ -262,8 +261,7 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
             .node_indices()?
             .ok_or_else(|| {
                 Error::BrokenInvariant("Elements without node indices are not allowed yet.".into())
-            })?
-            .into_owned();
+            })?.into_owned();
         impl_de_entity(Element { attr, indices }, &mut self.elements, group_data)
     }
 

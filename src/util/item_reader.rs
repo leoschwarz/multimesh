@@ -1,10 +1,11 @@
 use error::Error;
 use failure::Fail;
 use regex::Regex;
-use std::collections::VecDeque;
-use std::fmt::Display;
-use std::str::FromStr;
-use std::str::Lines;
+use std::{
+    collections::VecDeque,
+    fmt::Display,
+    str::{FromStr, Lines},
+};
 
 #[derive(Clone, Debug, Fail)]
 pub enum ItemReaderError {

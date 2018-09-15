@@ -2,19 +2,21 @@
 //!
 //! Defined in [ISSN 0249-0803](https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf) (PDF).
 
-use data::face_vertex;
-use data::mesh::{ReadElement, ReadNode};
-use data::AttrName;
-use data::{attribute::Attr, GroupData, GroupKind};
-use de::DeserializeMesh;
-use de::Deserializer;
+use data::{
+    attribute::Attr,
+    face_vertex,
+    mesh::{ReadElement, ReadNode},
+    AttrName, GroupData, GroupKind,
+};
+use de::{DeserializeMesh, Deserializer};
 use error::Error;
 use nalgebra::DVector;
-use naming::Format;
-use naming::Name;
+use naming::{Format, Name};
 use ser::{SerializableGroup, SerializableMesh, Serializer};
-use std::borrow::Cow;
-use std::io::{Read, Write};
+use std::{
+    borrow::Cow,
+    io::{Read, Write},
+};
 use util::item_reader::ItemReader;
 
 fn element_nary(element_name: &str) -> Option<usize> {
@@ -210,8 +212,7 @@ impl Deserializer for MeditDeserializer {
                                         Error::Syntax(
                                             "Missing expected attribute for vertex.".into(),
                                         )
-                                    })?
-                                    .into(),
+                                    })?.into(),
                             );
                             // TODO: the double reference is not that optimal
                             target.de_node(&&face_vertex::Node { position, attr }, &group)?;
@@ -256,8 +257,7 @@ impl Deserializer for MeditDeserializer {
                                 .next()
                                 .ok_or_else(|| {
                                     Error::Syntax("Missing expected attribute for Element.".into())
-                                })?
-                                .into(),
+                                })?.into(),
                         );
                         target.de_element(&(indices, attr), &group)?;
                     }
@@ -303,8 +303,7 @@ impl Deserializer for MeditDeserializer {
                                         Error::Syntax(
                                             "Missing expected attribute for Other entity.".into(),
                                         )
-                                    })?
-                                    .into(),
+                                    })?.into(),
                             );
                         }
                         target.de_entity(&&face_vertex::Entity { attr }, &group)?;

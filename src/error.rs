@@ -1,12 +1,14 @@
-use std::num::ParseFloatError;
-use std::num::ParseIntError;
+use std::num::{ParseFloatError, ParseIntError};
 
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "IO Error: {}", _0)]
     Io(::std::io::Error),
 
-    #[fail(display = "Implementor of multimesh traits broke invariant, or internal bug: {}", _0)]
+    #[fail(
+        display = "Implementor of multimesh traits broke invariant, or internal bug: {}",
+        _0
+    )]
     BrokenInvariant(String),
 
     #[fail(display = "Syntax error: {}", _0)]

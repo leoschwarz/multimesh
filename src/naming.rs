@@ -42,27 +42,30 @@ pub struct Name {
 
 impl Name {
     pub fn parse(s: String, format: Format, kind: GroupKind) -> Option<Self> {
-        if format != Format::Medit {
-            // TODO FIXME
-            unimplemented!();
+        match format {
+            Format::Medit => {
+                let ref whitelist = match kind {
+                    GroupKind::Node => NODES_MEDIT,
+                    GroupKind::Element => ELEMENTS_MEDIT,
+                    GroupKind::Vector => VECTORS_MEDIT,
+                    GroupKind::Other => OTHER_MEDIT,
+                };
+
+                if !whitelist.contains(&s.as_str()) {
+                    return None;
+                }
+            }
+            Format::Ply => {
+                // No validation.
+                // TODO Are there naming conventions for "ply elements"?
+            }
         }
 
-        let ref whitelist = match kind {
-            GroupKind::Node => NODES_MEDIT,
-            GroupKind::Element => ELEMENTS_MEDIT,
-            GroupKind::Vector => VECTORS_MEDIT,
-            GroupKind::Other => OTHER_MEDIT,
-        };
-
-        if whitelist.contains(&s.as_str()) {
-            Some(Name {
-                name: s,
-                format,
-                kind: kind.clone(),
-            })
-        } else {
-            None
-        }
+        Some(Name {
+            name: s,
+            format,
+            kind: kind.clone(),
+        })
     }
 
     pub fn get_original(&self) -> (&str, Format, GroupKind) {
@@ -82,6 +85,7 @@ impl Name {
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Copy)]
 pub enum Format {
     Medit,
+    Ply,
     // TODO: Allow formats other than the ones implemented together with this crate.
     //Other(String),
 }

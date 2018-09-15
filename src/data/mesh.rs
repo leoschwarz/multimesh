@@ -1,10 +1,7 @@
-use data::attribute::Attr;
-use data::AttrName;
+use data::{attribute::Attr, AttrName};
 use error::Error;
 use nalgebra::DVector;
-use std::borrow::Cow;
-use std::fmt;
-use std::str::FromStr;
+use std::{borrow::Cow, fmt, str::FromStr};
 
 /*
 pub trait ReadAttribute {

@@ -3,8 +3,10 @@
 //! This module is format agnostic, the actual implementations are found within the `format` module
 //! or within custom crates.
 
-use data::mesh::{ReadElement, ReadEntity, ReadNode, ReadVector};
-use data::GroupData;
+use data::{
+    mesh::{ReadElement, ReadEntity, ReadNode, ReadVector},
+    GroupData,
+};
 use error::Error;
 use std::io::Read;
 
