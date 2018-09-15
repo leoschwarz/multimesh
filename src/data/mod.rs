@@ -2,109 +2,63 @@ use naming::Name;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
+pub mod attribute;
 pub mod face_vertex;
+pub mod mesh;
 
-/// The name of an attribute.
-///
-/// In some cases attributes don't have a string key attached to them,
-/// but are referred to by a numeric index or assigned one according to
-/// their position in a list of attributes.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
-pub enum AttrName {
-    Index(usize),
-    Key(String),
-}
+pub use self::attribute::AttrName;
 
-impl From<usize> for AttrName {
-    fn from(i: usize) -> Self {
-        AttrName::Index(i)
-    }
-}
-
-impl From<String> for AttrName {
-    fn from(k: String) -> Self {
-        AttrName::Key(k)
-    }
-}
-
-/// Attributes of nodes or elements.
+// TODO: This belongs somewhere else?
 #[derive(Clone, Debug)]
-pub struct Attr {
-    values: BTreeMap<AttrName, f64>,
-}
-
-impl Attr {
-    /// Create a new and empty attr instance.
-    pub fn new() -> Self {
-        Attr {
-            values: BTreeMap::new(),
-        }
-    }
-
-    pub fn get<N: Into<AttrName>>(&self, name: N) -> Option<f64> {
-        self.values.get(&name.into()).cloned()
-    }
-
-    pub fn insert<N: Into<AttrName>>(&mut self, name: N, value: f64) {
-        self.values.insert(name.into(), value);
-    }
-
-    pub fn len(&self) -> usize {
-        self.values.len()
-    }
-
-    // TODO: implement all necessary methods. (Maybe also implement ops::Index and Iter.)
-}
-
-#[derive(Clone, Debug)]
-pub struct Group {
+pub struct GroupData {
     /// A ID which is unique for each distinct group while parsing.
     parsing_uid: u64,
     name: Name,
-    attr: Attr,
+    // TODO: Should Attr be used here?
+    attr: attribute::Attr,
     size: Option<usize>,
     kind: GroupKind,
 }
 
-impl PartialEq for Group {
-    fn eq(&self, other: &Group) -> bool {
+impl PartialEq for GroupData {
+    fn eq(&self, other: &GroupData) -> bool {
         self.parsing_uid == other.parsing_uid
     }
 }
 
-impl Eq for Group {}
+impl Eq for GroupData {}
 
-impl Hash for Group {
+impl Hash for GroupData {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.parsing_uid.hash(state);
     }
 }
 
+// TODO: Rename to EntityKind? (Problem: Entity/Property terminology is a bit problematic.)
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum GroupKind {
+    /// A mesh node/vertex.
     Node,
+    /// A mesh element/face/volume.
     Element,
-
-    /*
-    // TODO: Would Property be general enough for all other kinds of elements, or would we need
-    //       some kind of distinction?
+    /// A vector.
     Vector,
-    Property
-    */
+    /// Any other entity which does not fit into the other categories.
+    Other,
 }
 
-impl Group {
+impl GroupData {
     pub fn new(parsing_uid: u64, name: Name, size: Option<usize>, kind: GroupKind) -> Self {
-        Group {
+        GroupData {
             parsing_uid,
             name,
-            attr: Attr::new(),
+            attr: attribute::Attr::new(),
             size,
             kind,
         }
     }
 
-    pub fn attr(&self) -> &Attr {
+    pub fn attr(&self) -> &attribute::Attr {
         &self.attr
     }
 

@@ -1,6 +1,10 @@
 //! Defines the serialization interface for mesh container types.
 
-use data::Attr;
+use data::mesh::ReadElement;
+use data::mesh::ReadEntity;
+use data::mesh::ReadNode;
+use data::mesh::ReadVector;
+use data::AttrName;
 use nalgebra::DVector;
 use naming::Name;
 use std::borrow::Cow;
@@ -13,18 +17,6 @@ pub trait Serializer {
     where
         M: SerializableMesh,
         W: Write;
-}
-
-pub trait SerializableNode {
-    fn position(&self) -> Cow<DVector<f64>>;
-    fn attr(&self) -> Cow<Attr>;
-}
-
-pub trait SerializableElement {
-    fn node_indices(&self) -> Option<Cow<DVector<usize>>>;
-    // TODO use matrix type?
-    //fn node_positions(&self) -> Option<&DVector<f64>>
-    fn attr(&self) -> Cow<Attr>;
 }
 
 #[derive(Clone, Debug)]
@@ -70,15 +62,25 @@ pub trait SerializableGroup {
 }
 
 pub trait SerializableMesh {
-    type Node: SerializableNode;
+    // TODO: This is ugly, but GAT are not implemented yet.
+    // Reference: https://github.com/rust-lang/rust/issues/44265
+    type Node: ReadNode;
     type NodeGroup: SerializableGroup<Item = Self::Node>;
     type NodeGroups: Iterator<Item = Self::NodeGroup>;
-    type Element: SerializableElement;
+    type Element: ReadElement;
     type ElementGroup: SerializableGroup<Item = Self::Element>;
     type ElementGroups: Iterator<Item = Self::ElementGroup>;
+    type Vector: ReadVector;
+    type VectorGroup: SerializableGroup<Item = Self::Vector>;
+    type VectorGroups: Iterator<Item = Self::VectorGroup>;
+    type Other: ReadEntity;
+    type OtherGroup: SerializableGroup<Item = Self::Other>;
+    type OtherGroups: Iterator<Item = Self::OtherGroup>;
 
     fn metadata(&self) -> MeshMetadata;
 
     fn node_groups(&self) -> Self::NodeGroups;
     fn element_groups(&self) -> Self::ElementGroups;
+    fn vector_groups(&self) -> Self::VectorGroups;
+    fn other_groups(&self) -> Self::OtherGroups;
 }

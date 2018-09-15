@@ -2,13 +2,14 @@
 //!
 //! Defined in [https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf](ISSN 0249-0803) .
 
-use data::{Attr, Group, GroupKind};
+use data::{attribute::Attr, GroupData, GroupKind};
+use data::mesh::{ReadVector,ReadEntity,ReadNode,ReadElement};
 use de::Deserializer;
 use de::{DeserializeMesh, DeserializerError};
 use nalgebra::DVector;
 use naming::Format;
 use naming::Name;
-use ser::{SerializableElement, SerializableGroup, SerializableMesh, SerializableNode, Serializer};
+use ser::{SerializableGroup, SerializableMesh, Serializer};
 use std::io::{self, Read, Write};
 use util::item_reader::{ItemReader, ItemReaderError};
 
@@ -224,7 +225,7 @@ impl Deserializer for MeditDeserializer {
                     parsing_uid += 1;
                     let group_name = Name::parse_node(keyword.into(), Format::Medit).unwrap();
                     let group =
-                        Group::new(parsing_uid, group_name, Some(num_nodes), GroupKind::Node);
+                        GroupData::new(parsing_uid, group_name, Some(num_nodes), GroupKind::Node);
                     target.de_group_begin(&group)?;
 
                     for _ in 0..num_nodes {
@@ -249,7 +250,7 @@ impl Deserializer for MeditDeserializer {
 
                     parsing_uid += 1;
                     let group_name = Name::parse_element(keyword.into(), Format::Medit).unwrap();
-                    let group = Group::new(
+                    let group = GroupData::new(
                         parsing_uid,
                         group_name,
                         Some(num_elements),

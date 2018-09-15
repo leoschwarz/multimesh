@@ -47,14 +47,16 @@ impl<'s> ItemReader<'s> {
     }
 
     pub(crate) fn next_parse_until_eol<T>(&mut self) -> Result<T, ItemReaderError>
-        where
-            T: FromStr,
-            <T as FromStr>::Err: Display,
+    where
+        T: FromStr,
+        <T as FromStr>::Err: Display,
     {
-        self.next_until_eol().ok_or(ItemReaderError::UnexpectedEof).and_then(|s| {
-            s.parse()
-                .map_err(|e| ItemReaderError::Parse(format!("{}", e)))
-        })
+        self.next_until_eol()
+            .ok_or(ItemReaderError::UnexpectedEof)
+            .and_then(|s| {
+                s.parse()
+                    .map_err(|e| ItemReaderError::Parse(format!("{}", e)))
+            })
     }
 
     fn next_item(&mut self, ignore_newline: bool) -> Option<&'s str> {

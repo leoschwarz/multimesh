@@ -1,8 +1,8 @@
 // TODO: Early work in progress.
 
+use de::DeserializeMesh;
 use de::Deserializer;
 use std::io::Read;
-use de::DeserializeMesh;
 use util::item_reader::ItemReader;
 
 pub struct PlySerializer {}

@@ -3,7 +3,9 @@
 //! This module is format agnostic, the actual implementations are found within the `format` module
 //! or within custom crates.
 
-use data::{Attr, Group};
+use data::attribute::Attr;
+use data::mesh::{ReadElement, ReadEntity, ReadNode, ReadVector};
+use data::{AttrName, GroupData};
 use nalgebra::DVector;
 use std::borrow::Cow;
 use std::io::Read;
@@ -30,48 +32,73 @@ pub enum DeserializerError {
     Other(Box<::std::error::Error + Send + Sync>),
 }
 
-pub trait DeserializeElement {
-    fn indices(&mut self) -> Result<Option<Cow<DVector<usize>>>, DeserializerError>;
-    fn attr(&mut self) -> Result<Cow<Attr>, DeserializerError>;
-}
-
-impl DeserializeElement for (DVector<usize>, Attr) {
-    fn indices(&mut self) -> Result<Option<Cow<DVector<usize>>>, DeserializerError> {
-        Ok(Some(Cow::Borrowed(&self.0)))
-    }
-
-    fn attr(&mut self) -> Result<Cow<Attr>, DeserializerError> {
-        Ok(Cow::Borrowed(&self.1))
-    }
-}
-
 /// Ability to receive a mesh being deserialized.
 pub trait DeserializeMesh {
     fn de_dimension(&mut self, dim: u8);
 
     /// Invoked immediately before deserializing a group of entities.
-    fn de_group_begin(&mut self, _group: &Group) -> Result<(), DeserializerError> {
+    fn de_group_begin(&mut self, _group: &GroupData) -> Result<(), DeserializerError> {
         Ok(())
     }
 
     /// Invoked immediately after deserializing a group of entities.
-    fn de_group_end(&mut self, _group: &Group) -> Result<(), DeserializerError> {
+    fn de_group_end(&mut self, _group: &GroupData) -> Result<(), DeserializerError> {
         Ok(())
     }
 
-    /// Deserialize a node at a position and with attributes.
-    ///
-    /// TODO: DVector should be const generic size (when supported)
-    fn de_node(
-        &mut self,
-        position: DVector<f64>,
-        attr: Attr,
-        group: &Group,
-    ) -> Result<(), DeserializerError>;
+    /// Invoked for each entity of a group, unless one of the more specific handlers is invoked.
+    fn de_entity<R>(&mut self, entity: &R, group: &GroupData) -> Result<(), DeserializerError>
+    where
+        R: ReadEntity<Error = DeserializerError>;
 
-    fn de_element<De: DeserializeElement>(
-        &mut self,
-        element: De,
-        group: &Group,
-    ) -> Result<(), DeserializerError>;
+    /// Invoked for node/vertex entities instead of `de_entity` if the format metadata defines
+    /// the entity as a node entity.
+    ///
+    /// The default implementation invokes `de_entity` as a fallback.
+    fn de_node<R>(&mut self, node: &R, group: &GroupData) -> Result<(), DeserializerError>
+    where
+        R: ReadNode<Error = DeserializerError>,
+    {
+        self.de_entity(node, group)
+    }
+
+    /// Invoked for element/face/volume entities instead of `de_entity` if the format metadata
+    /// defines the entity as a element entity.
+    ///
+    /// The default implementation invokes `de_entity` as a fallback.
+    fn de_element<R>(&mut self, element: &R, group: &GroupData) -> Result<(), DeserializerError>
+    where
+        R: ReadElement<Error = DeserializerError>,
+    {
+        self.de_entity(element, group)
+    }
+
+    /// Invoked for vector entities instead of `de_entity` if the format metadata
+    /// defines the entity as a vector entity.
+    ///
+    /// The default implementation invokes `de_entity` as a fallback.
+    fn de_vector<R>(&mut self, vector: &R, group: &GroupData) -> Result<(), DeserializerError>
+    where
+        R: ReadVector<Error = DeserializerError>,
+    {
+        self.de_entity(vector, group)
+    }
 }
+
+/*
+// TODO: Do we need these impls?
+
+impl DeserializeEntity for (DVector<usize>, Attr) {
+    fn attr_at(&self, index: usize) -> Option<(AttrName, Cow<str>)> {
+        // TODO: This is silly, we format a float as string here so it can be parsed back.
+        self.1
+            .get_at(index)
+            .map(|(n, s)| (n.clone(), Cow::Owned(format!("{}", s))))
+    }
+}
+
+impl DeserializeElement for (DVector<usize>, Attr) {
+    fn indices(&self) -> Result<Option<Cow<DVector<usize>>>, DeserializerError> {
+        Ok(Some(Cow::Borrowed(&self.0)))
+    }
+*/

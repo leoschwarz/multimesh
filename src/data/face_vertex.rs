@@ -1,6 +1,11 @@
 //! Face-vertex mesh representation.
 // TODO(blocked): Const-generics for node and element items?
 
+use data::attribute::Attr;
+use data::mesh::ReadElement;
+use data::mesh::ReadEntity;
+use data::mesh::ReadNode;
+use data::mesh::ReadVector;
 use data::*;
 use de::*;
 use nalgebra::DVector;
@@ -14,8 +19,16 @@ use std::borrow::Cow;
 #[derive(Default, Debug)]
 pub struct Mesh {
     dimension: u8,
-    nodes: Vec<NodeGroup>,
-    elements: Vec<ElementGroup>,
+
+    nodes: Vec<Group<Node>>,
+    elements: Vec<Group<Element>>,
+    vectors: Vec<Group<Vector>>,
+    others: Vec<Group<Entity>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Entity {
+    attr: Attr,
 }
 
 #[derive(Clone, Debug)]
@@ -26,105 +39,106 @@ pub struct Node {
 
 #[derive(Clone, Debug)]
 pub struct Element {
-    attr: Attr,
     indices: DVector<usize>,
+    attr: Attr,
+}
+
+#[derive(Clone, Debug)]
+pub struct Vector {
+    components: DVector<f64>,
+    attr: Attr,
+}
+
+macro_rules! impl_read_entity {
+    ($target:ident) => {
+        impl<'m> ReadEntity for &'m $target {
+            type Error = ();
+
+            fn attr_at(&self, index: usize) -> Result<Option<(Cow<AttrName>, Cow<str>)>, ()> {
+                Ok(self
+                    .attr
+                    .get_at(index)
+                    .map(|(n, v)| (Cow::Borrowed(n), Cow::Borrowed(v.as_ref()))))
+            }
+
+            fn attr_get(&self, name: &AttrName) -> Result<Option<Cow<str>>, ()> {
+                Ok(self.attr.get(name).map(|s| s.into()))
+            }
+        }
+    };
+}
+
+impl_read_entity!(Entity);
+impl_read_entity!(Node);
+impl_read_entity!(Element);
+impl_read_entity!(Vector);
+
+impl<'m> ReadNode for &'m Node {
+    fn position(&self) -> Result<Cow<DVector<f64>>, ()> {
+        Ok(Cow::Borrowed(&self.position))
+    }
+}
+
+impl<'m> ReadElement for &'m Element {
+    fn node_indices(&self) -> Result<Option<Cow<DVector<usize>>>, ()> {
+        Ok(Some(Cow::Borrowed(&self.indices)))
+    }
+}
+
+impl<'m> ReadVector for &'m Vector {
+    fn components(&self) -> Result<Cow<DVector<f64>>, ()> {
+        Ok(Cow::Borrowed(&self.components))
+    }
 }
 
 #[derive(Debug)]
-pub struct NodeGroup {
-    group: Group,
-    pub(crate) nodes: Vec<Node>,
+pub struct Group<I> {
+    data: GroupData,
+    pub(crate) items: Vec<I>,
 }
 
-#[derive(Debug)]
-pub struct ElementGroup {
-    group: Group,
-    pub(crate) elements: Vec<Element>,
-}
-
-impl<'m> SerializableNode for &'m Node {
-    fn position(&self) -> Cow<DVector<f64>> {
-        Cow::Borrowed(&self.position)
-    }
-
-    fn attr(&self) -> Cow<Attr> {
-        Cow::Borrowed(&self.attr)
+impl<I> Group<I> {
+    fn new_empty(data: GroupData) -> Self {
+        let group_size = data.size();
+        Group::<I> {
+            data,
+            items: match group_size {
+                Some(size) => Vec::with_capacity(size),
+                None => Vec::new(),
+            },
+        }
     }
 }
 
-impl<'m> SerializableGroup for &'m NodeGroup {
-    type Item = &'m Node;
+impl<'m, T> SerializableGroup for &'m Group<T> {
+    type Item = &'m T;
 
     fn metadata(&self) -> GroupMetadata {
         GroupMetadata {
-            name: self.group.name.clone(),
-            size: self.nodes.len(),
+            name: self.data.name.clone(),
+            size: self.items.len(),
         }
     }
 
     fn len(&self) -> usize {
-        self.nodes.len()
+        self.items.len()
     }
 
     fn item_at(&self, index: usize) -> Option<Self::Item> {
-        self.nodes.get(index)
+        self.items.get(index)
     }
 }
 
-pub struct NodeGroupsIterator<'m> {
+pub struct GroupIterator<'m, T: 'm> {
     index: usize,
-    mesh: &'m Mesh,
+    items: &'m Vec<Group<T>>,
 }
 
-impl<'m> Iterator for NodeGroupsIterator<'m> {
-    type Item = &'m NodeGroup;
+impl<'m, T> Iterator for GroupIterator<'m, T> {
+    type Item = &'m Group<T>;
 
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
-        let opt = self.mesh.nodes.get(self.index);
-        self.index += 1;
-        opt
-    }
-}
-
-impl<'m> SerializableGroup for &'m ElementGroup {
-    type Item = &'m Element;
-
-    fn metadata(&self) -> GroupMetadata {
-        GroupMetadata {
-            name: self.group.name.clone(),
-            size: self.elements.len(),
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.elements.len()
-    }
-
-    fn item_at(&self, index: usize) -> Option<Self::Item> {
-        self.elements.get(index)
-    }
-}
-
-impl<'m> SerializableElement for &'m Element {
-    fn node_indices(&self) -> Option<Cow<DVector<usize>>> {
-        Some(Cow::Borrowed(&self.indices))
-    }
-
-    fn attr(&self) -> Cow<Attr> {
-        Cow::Borrowed(&self.attr)
-    }
-}
-
-pub struct ElementGroupsIterator<'m> {
-    index: usize,
-    mesh: &'m Mesh,
-}
-
-impl<'m> Iterator for ElementGroupsIterator<'m> {
-    type Item = &'m ElementGroup;
-
-    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
-        let opt = self.mesh.elements.get(self.index);
+        let opt = self.items.get(self.index);
         self.index += 1;
         opt
     }
@@ -138,11 +152,17 @@ impl Mesh {
 
 impl<'m> SerializableMesh for &'m Mesh {
     type Node = &'m Node;
-    type NodeGroup = &'m NodeGroup;
-    type NodeGroups = NodeGroupsIterator<'m>;
+    type NodeGroup = &'m Group<Node>;
+    type NodeGroups = GroupIterator<'m, Node>;
     type Element = &'m Element;
-    type ElementGroup = &'m ElementGroup;
-    type ElementGroups = ElementGroupsIterator<'m>;
+    type ElementGroup = &'m Group<Element>;
+    type ElementGroups = GroupIterator<'m, Element>;
+    type Vector = &'m Vector;
+    type VectorGroup = &'m Group<Vector>;
+    type VectorGroups = GroupIterator<'m, Vector>;
+    type Other = &'m Entity;
+    type OtherGroup = &'m Group<Entity>;
+    type OtherGroups = GroupIterator<'m, Entity>;
 
     fn metadata(&self) -> MeshMetadata {
         MeshMetadata {
@@ -151,18 +171,49 @@ impl<'m> SerializableMesh for &'m Mesh {
     }
 
     fn node_groups(&self) -> Self::NodeGroups {
-        NodeGroupsIterator {
+        GroupIterator {
             index: 0,
-            mesh: self,
+            items: &self.nodes,
         }
     }
 
     fn element_groups(&self) -> Self::ElementGroups {
-        ElementGroupsIterator {
+        GroupIterator {
             index: 0,
-            mesh: self,
+            items: &self.elements,
         }
     }
+
+    fn vector_groups(&self) -> Self::VectorGroups {
+        GroupIterator {
+            index: 0,
+            items: &self.vectors,
+        }
+    }
+
+    fn other_groups(&self) -> Self::OtherGroups {
+        GroupIterator {
+            index: 0,
+            items: &self.others,
+        }
+    }
+}
+
+fn impl_de_entity<E>(
+    entity: E,
+    target: &mut Vec<Group<E>>,
+    group_data: &GroupData,
+) -> Result<(), DeserializerError> {
+    if let Some(ref mut group) = target.last_mut() {
+        if *group_data == group.data {
+            group.items.push(entity);
+            return Ok(());
+        }
+    }
+
+    Err(DeserializerError::BrokenInvariant(
+        "de_group_begin was not invoked".into(),
+    ))
 }
 
 impl<'a> DeserializeMesh for &'a mut Mesh {
@@ -170,67 +221,46 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
         self.dimension = dim;
     }
 
-    fn de_group_begin(&mut self, group: &Group) -> Result<(), DeserializerError> {
-        if group.kind() == GroupKind::Element {
-            self.elements.push(ElementGroup {
-                group: group.clone(),
-                elements: match group.size() {
-                    Some(size) => Vec::with_capacity(size),
-                    None => Vec::new(),
-                },
-            });
-        } else if group.kind() == GroupKind::Node {
-            self.nodes.push(NodeGroup {
-                group: group.clone(),
-                nodes: match group.size() {
-                    Some(size) => Vec::with_capacity(size),
-                    None => Vec::new(),
-                },
-            });
+    fn de_group_begin(&mut self, group_data: &GroupData) -> Result<(), DeserializerError> {
+        match group_data.kind() {
+            GroupKind::Node => self.nodes.push(Group::new_empty(group_data.clone())),
+            GroupKind::Element => self.elements.push(Group::new_empty(group_data.clone())),
+            GroupKind::Vector => self.vectors.push(Group::new_empty(group_data.clone())),
+            GroupKind::Other => self.others.push(Group::new_empty(group_data.clone())),
         }
+
         Ok(())
     }
 
-    fn de_group_end(&mut self, _group: &Group) -> Result<(), DeserializerError> {
+    fn de_group_end(&mut self, _group: &GroupData) -> Result<(), DeserializerError> {
         Ok(())
     }
 
-    fn de_node(
-        &mut self,
-        position: DVector<f64>,
-        attr: Attr,
-        group: &Group,
-    ) -> Result<(), DeserializerError> {
-        if let Some(ref mut no_group) = self.nodes.last_mut() {
-            if *group == no_group.group {
-                no_group.nodes.push(Node { attr, position });
-                return Ok(());
-            }
-        }
-
-        Err(DeserializerError::BrokenInvariant(
-            "de_group_begin was not invoked".into(),
-        ))
+    fn de_entity<R>(&mut self, entity: &R, group_data: &GroupData) -> Result<(), DeserializerError>
+    where
+        R: ReadEntity<Error = DeserializerError>,
+    {
+        let attr = Attr::from_entity(entity)?;
+        impl_de_entity(Entity { attr }, &mut self.others, group_data)
     }
 
-    fn de_element<De: DeserializeElement>(
-        &mut self,
-        mut element: De,
-        group: &Group,
-    ) -> Result<(), DeserializerError> {
-        if let Some(ref mut el_group) = self.elements.last_mut() {
-            if *group == el_group.group {
-                el_group.elements.push(Element {
-                    attr: element.attr()?.into_owned(),
-                    // TODO support non-index formats
-                    indices: element.indices()?.unwrap().into_owned(),
-                });
-                return Ok(());
-            }
-        }
-
-        Err(DeserializerError::BrokenInvariant(
-            "de_group_begin was not invoked".into(),
-        ))
+    fn de_node<R>(&mut self, node: &R, group_data: &GroupData) -> Result<(), DeserializerError>
+    where
+        R: ReadNode<Error = DeserializerError>,
+    {
+        let attr = Attr::from_entity(node)?;
+        let position = node.position()?.into_owned();
+        impl_de_entity(Node { attr, position }, &mut self.nodes, group_data)
     }
+
+    // TODO
+    /*
+    fn de_element<De: DeserializeElement>(&mut self, element: De, group: &GroupData) -> Result<(), DeserializerError> {
+        unimplemented!()
+    }
+
+    fn de_vector<De: DeserializeVector>(&mut self, vector: De, group: &GroupData) -> Result<(), DeserializerError> {
+        unimplemented!()
+    }
+    */
 }
