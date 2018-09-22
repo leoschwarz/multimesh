@@ -1,8 +1,17 @@
-//! TODO: WIP
+//! Implementation of serializer and deserializer for the Polygon File Format (PLY format).
 //!
 //! Definition: http://paulbourke.net/dataformats/ply/
-
-// TODO: Early work in progress.
+//!
+//! TODO: Binary ply support.
+//! TODO: Ply does not differentiate between different kinds of entities on the format level.
+//!       Type ascription as such has to be done by the user. There seem to be certain conventions
+//!       however so far I have not been able to find an authority on "the right ones".
+//! TODO: Another possibility would be to do the least surprising thing by default (deserialize
+//!       everything as "other entity" and provide a way to configure lists of entities to be
+//!       parsed in a specific way). This is rather cumbersome, but if the alternative is having
+//!       the user implement everything on their own (which they still could with the default
+//!       arguments) then this would be clearly beneficial since there would have to be only one
+//!       implementation of this boring stuff.
 
 use data::{attribute::Attr, face_vertex::Entity, AttrName, GroupData, GroupKind};
 use de::{DeserializeMesh, Deserializer};
@@ -10,6 +19,21 @@ use error::Error;
 use naming::{Format, Name};
 use std::{io::Read, str::FromStr};
 use util::item_reader::ItemReader;
+
+// TODO: Find the conventions 
+/*
+pub struct PlyConfig {
+    pub autodetect_elements: bool,
+}
+
+impl Default for PlyConfig {
+    fn default() -> Self {
+        PlyConfig {
+            autodetect_elements: false
+        }
+    }
+}
+*/
 
 pub struct PlySerializer {}
 pub struct PlyDeserializer {}

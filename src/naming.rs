@@ -96,8 +96,8 @@ mod tests {
 
     #[test]
     fn parse_element_name() {
-        let name1 = Name::parse("Triangles".into(), Format::Medit, &GroupKind::Element);
-        let name2 = Name::parse("Potato".into(), Format::Medit, &GroupKind::Element);
+        let name1 = Name::parse("Triangles".into(), Format::Medit, GroupKind::Element);
+        let name2 = Name::parse("Potato".into(), Format::Medit, GroupKind::Element);
         assert!(name1.is_some());
         assert!(name2.is_none());
         let name = name1.unwrap();
