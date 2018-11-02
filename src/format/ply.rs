@@ -20,7 +20,7 @@ use naming::{Format, Name};
 use std::{io::Read, str::FromStr};
 use util::item_reader::ItemReader;
 
-// TODO: Find the conventions 
+// TODO: Find the conventions
 /*
 pub struct PlyConfig {
     pub autodetect_elements: bool,

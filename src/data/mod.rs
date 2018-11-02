@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 
 pub mod attribute;
 pub(crate) mod mesh;
+pub mod printing;
 
 pub mod face_vertex;
 pub use self::{

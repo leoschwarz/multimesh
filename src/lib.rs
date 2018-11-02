@@ -10,12 +10,13 @@
 //! which are suitable for a wide range of formats while still being efficient and
 //! ergonomic for real world and big data set usage.
 
-extern crate nalgebra;
-extern crate regex;
-#[macro_use]
-extern crate lazy_static;
 #[macro_use]
 extern crate failure;
+#[macro_use]
+extern crate lazy_static;
+extern crate nalgebra;
+extern crate prettytable;
+extern crate regex;
 
 mod util;
 

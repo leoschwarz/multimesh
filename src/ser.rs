@@ -56,7 +56,11 @@ pub trait SerializableGroup {
 }
 
 pub trait SerializableMesh {
-    // TODO: This is ugly, but GAT are not implemented yet.
+    // TODO: This is ugly, but GAT are not implemented yet, and this
+    // way you have to define a lot of associated types but can implement the
+    // trait more easily if this was more generic (it would mostly prevent
+    // impleenting generic helper functions because there would be so much typing
+    // boilerblate in the form of where clauses to write).
     // Reference: https://github.com/rust-lang/rust/issues/44265
     type Node: ReadNode;
     type NodeGroup: SerializableGroup<Item = Self::Node>;
@@ -72,7 +76,6 @@ pub trait SerializableMesh {
     type OtherGroups: Iterator<Item = Self::OtherGroup>;
 
     fn metadata(&self) -> MeshMetadata;
-
     fn node_groups(&self) -> Self::NodeGroups;
     fn element_groups(&self) -> Self::ElementGroups;
     fn vector_groups(&self) -> Self::VectorGroups;

@@ -212,7 +212,8 @@ impl Deserializer for MeditDeserializer {
                                         Error::Syntax(
                                             "Missing expected attribute for vertex.".into(),
                                         )
-                                    })?.into(),
+                                    })?
+                                    .into(),
                             );
                             // TODO: the double reference is not that optimal
                             target.de_node(&&face_vertex::Node { position, attr }, &group)?;
@@ -257,7 +258,8 @@ impl Deserializer for MeditDeserializer {
                                 .next()
                                 .ok_or_else(|| {
                                     Error::Syntax("Missing expected attribute for Element.".into())
-                                })?.into(),
+                                })?
+                                .into(),
                         );
                         target.de_element(&(indices, attr), &group)?;
                     }
@@ -303,7 +305,8 @@ impl Deserializer for MeditDeserializer {
                                         Error::Syntax(
                                             "Missing expected attribute for Other entity.".into(),
                                         )
-                                    })?.into(),
+                                    })?
+                                    .into(),
                             );
                         }
                         target.de_entity(&&face_vertex::Entity { attr }, &group)?;

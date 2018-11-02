@@ -10,7 +10,7 @@ use de::*;
 use error::Error;
 use nalgebra::DVector;
 use ser::*;
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt};
 
 /// A mesh represented in face-vertex form, referred to as elements and nodes in the following.
 ///
@@ -146,6 +146,11 @@ impl Mesh {
     pub fn metadata(&self) -> MeshMetadata {
         SerializableMesh::metadata(&self)
     }
+
+    /*
+    pub fn print_full(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    }
+    */
 }
 
 impl<'m> SerializableMesh for &'m Mesh {
@@ -261,7 +266,8 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
             .node_indices()?
             .ok_or_else(|| {
                 Error::BrokenInvariant("Elements without node indices are not allowed yet.".into())
-            })?.into_owned();
+            })?
+            .into_owned();
         impl_de_entity(Element { attr, indices }, &mut self.elements, group_data)
     }
 
