@@ -1,6 +1,7 @@
 use error::Error;
 use std::collections::{BTreeMap, btree_map};
 use std::iter::FromIterator;
+use std::fmt::Debug;
 
 /// The name of an attribute.
 ///
@@ -25,7 +26,7 @@ impl From<String> for AttributeName {
     }
 }
 
-pub trait AttributeContainer {
+pub trait AttributeContainer: Clone + Debug {
     /// The number of contained attributes.
     fn len(&self) -> usize;
 
@@ -74,7 +75,7 @@ impl AttributeContainerMut for AttributeMap {
 }
 
 impl AttributeMap {
-    fn from_container<A: AttributeContainer>(c: A) -> Self {
+    pub fn from_container<A: AttributeContainer>(c: &A) -> Self {
         let mut data = BTreeMap::new();
         for (k, v) in c.iter() {
             data.insert(k.clone(), v.clone());

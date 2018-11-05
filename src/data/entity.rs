@@ -50,3 +50,16 @@ impl EntityMut<AttributeMap> for EntityBox
         &mut self.attr
     }
 }
+
+impl EntityBox {
+    pub fn from_entity<E, A>(e: &E) -> Self
+    where
+        E: Entity<Attr=A>,
+        A: AttributeContainer
+    {
+        EntityBox {
+            kind: e.kind(),
+            attr: AttributeMap::from_container(e.attributes())
+        }
+    }
+}

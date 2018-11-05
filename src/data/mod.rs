@@ -17,20 +17,19 @@ use data::attribute::AttributeMap;
 
 
 pub trait SetMeshGroup<'m> {
-    type Entity: Entity;
-
     /// Will not necessarily be called by every deserializer, but if it is called, then the contract
     /// is that the size will not change anymore.
     fn reserve(&mut self, _num: usize) -> Result<(), Error> { Ok(()) }
 
-    fn add_entity(&mut self, entity: Self::Entity) -> Result<(), Error>;
+    fn add_entity<E: Entity>(&mut self, entity: E) -> Result<(), Error>;
 
     fn end(self) -> Result<(), Error>;
 }
 
 pub trait SetMesh<'m> {
-    type Entity: Entity;
-    type GroupSetter: SetMeshGroup<'m, Entity=Self::Entity> + 'm;
+    //type Entity: Entity;
+    //type GroupSetter: SetMeshGroup<'m, Entity=Self::Entity> + 'm;
+    type GroupSetter: SetMeshGroup<'m> + 'm;
 
     fn set_dimension(&'m mut self, dim: u8);
 
@@ -44,7 +43,7 @@ pub trait GetMeshGroup: Iterator {
 pub trait GetMesh<'m> {
     type Entity;
     type GroupReader: GetMeshGroup<Item=Self::Entity> + 'm;
-    type GroupReaders: Iterator<Item=&'m Self::GroupReader> + 'm;
+    type GroupReaders: Iterator<Item=Self::GroupReader> + 'm;
 
     fn metadata(&self) -> MeshMetadata;
     fn groups(&self) -> Self::GroupReaders;

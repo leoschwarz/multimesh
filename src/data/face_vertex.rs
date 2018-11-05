@@ -32,7 +32,6 @@ pub struct Mesh {
 }
 
 impl<'m> SetMesh<'m> for &'m mut Mesh {
-    type Entity = EntityBox;
     type GroupSetter = MeshGroupSetter<'m>;
 
     fn set_dimension(&'m mut self, dim: u8) {
@@ -57,10 +56,8 @@ pub struct MeshGroupSetter<'m> {
 }
 
 impl<'m> SetMeshGroup<'m> for MeshGroupSetter<'m> {
-    type Entity = EntityBox;
-
-    fn add_entity(&mut self, entity: EntityBox) -> Result<(), Error> {
-        self.entities.push(entity);
+    fn add_entity<E: Entity>(&mut self, entity: E) -> Result<(), Error> {
+        self.entities.push(EntityBox::from_entity(&entity));
         Ok(())
     }
 
@@ -87,10 +84,10 @@ pub struct EntityGroup {
     entities: Vec<EntityBox>,
 }
 
-/*
 impl<'m> GetMesh<'m> for &'m Mesh {
+    type Entity = EntityBox;
     type GroupReader = MeshGroupReader<'m>;
-    type GroupReaders = ::std::slice::Iter<'m, MeshGroupReader<'m>>;
+    type GroupReaders = Box<Iterator<Item=Self::GroupReader> + 'm>;
 
     fn metadata(&self) -> MeshMetadata {
         MeshMetadata {
@@ -99,12 +96,15 @@ impl<'m> GetMesh<'m> for &'m Mesh {
     }
 
     fn groups(&self) -> Self::GroupReaders {
+        /*
         let groups_it = self.nodes.iter().chain(self.elements.iter()).chain(self.vectors.iter()).chain(self.others.iter());
-        groups_it.map(|group| MeshGroupReader {mesh: self, entity_group: group, index: 0})
+        Box::new(groups_it.map(|group| MeshGroupReader {mesh: self, entity_group: group, index: 0}))
+        */
+        unimplemented!()
     }
 }
 
-struct MeshGroupReader<'m> {
+pub struct MeshGroupReader<'m> {
     mesh: &'m Mesh,
     entity_group: &'m EntityGroup,
     index: usize,
@@ -122,5 +122,5 @@ impl<'m> Iterator for MeshGroupReader<'m> {
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         unimplemented!()
     }
-}*/
+}
 
