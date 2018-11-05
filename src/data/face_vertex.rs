@@ -2,15 +2,20 @@
 // TODO(blocked): Const-generics for node and element items?
 
 use data::{
-    attribute::Attr,
-    mesh::{ReadElement, ReadEntity, ReadNode, ReadVector},
+    attribute::{AttributeMap, AttributeName},
     *,
 };
-use de::*;
 use error::Error;
 use nalgebra::DVector;
-use ser::*;
 use std::{borrow::Cow, fmt};
+use data::SetMesh;
+use data::EntityKind;
+use naming::Name;
+use data::SetMeshGroup;
+use data::Entity;
+use data::{GetMesh, GetMeshGroup};
+use data::MeshMetadata;
+use data::GroupMetadata;
 
 /// A mesh represented in face-vertex form, referred to as elements and nodes in the following.
 ///
@@ -20,47 +25,128 @@ use std::{borrow::Cow, fmt};
 pub struct Mesh {
     dimension: u8,
 
-    nodes: Vec<Group<Node>>,
-    elements: Vec<Group<Element>>,
-    vectors: Vec<Group<Vector>>,
-    others: Vec<Group<Entity>>,
+    nodes: Vec<EntityGroup>,
+    elements: Vec<EntityGroup>,
+    vectors: Vec<EntityGroup>,
+    others: Vec<EntityGroup>,
 }
 
+impl<'m> SetMesh<'m> for &'m mut Mesh {
+    type GroupSetter = MeshGroupSetter<'m>;
+
+    fn set_dimension(&'m mut self, dim: u8) {
+        self.dimension = dim;
+    }
+
+    fn add_group(&'m mut self, name: Name, kind: EntityKind) -> Result<Self::GroupSetter, Error> {
+        Ok(MeshGroupSetter {
+            name,
+            kind,
+            mesh: self,
+            entities: Vec::new(),
+        })
+    }
+}
+
+pub struct MeshGroupSetter<'m> {
+    name: Name,
+    kind: EntityKind,
+    mesh: &'m mut Mesh,
+    entities: Vec<Entity>
+}
+
+impl<'m> SetMeshGroup<'m> for MeshGroupSetter<'m> {
+    fn add_entity(&mut self, entity: Entity) -> Result<(), Error> {
+        self.entities.push(entity);
+        Ok(())
+    }
+
+    fn end(self) -> Result<(), Error> {
+        let group = EntityGroup {};
+        match self.kind {
+            EntityKind::Node => self.mesh.nodes.push(group),
+            EntityKind::Element => self.mesh.elements.push(group),
+            EntityKind::Vector => self.mesh.vectors.push(group),
+            EntityKind::Other => self.mesh.others.push(group)
+        }
+        Ok(())
+    }
+}
+
+// TODO
+#[derive(Clone, Debug)]
+pub struct EntityGroup {
+    
+}
+
+impl<'m> GetMesh<'m> for &'m Mesh {
+    type GroupReader = MeshGroupReader<'m>;
+    type GroupReaders = ::std::slice::Iter<'m, MeshGroupReader<'m>>;
+
+    fn metadata(&self) -> MeshMetadata {
+        MeshMetadata {
+            dimension: self.dimension,
+        }
+    }
+
+    fn groups(&self) -> Self::GroupReaders {
+        let groups_it = self.nodes.iter().chain(self.elements.iter()).chain(self.vectors.iter()).chain(self.others.iter());
+        groups_it.map(|group| MeshGroupReader {mesh: self, entity_group: group, index: 0})
+    }
+}
+
+struct MeshGroupReader<'m> {
+    mesh: &'m Mesh,
+    entity_group: &'m EntityGroup,
+    index: usize,
+}
+
+impl<'m> GetMeshGroup for MeshGroupReader<'m> {
+    fn metadata(&self) -> GroupMetadata {
+        unimplemented!()
+    }
+}
+
+impl<'m> Iterator for MeshGroupReader<'m> {
+    type Item = Entity;
+
+    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+        if index < self.entity_group.len() {
+        }
+    }
+}
+
+/*
 #[derive(Clone, Debug)]
 pub struct Entity {
-    pub attr: Attr,
+    pub attr: AttributeMap,
 }
 
 #[derive(Clone, Debug)]
 pub struct Node {
     pub position: DVector<f64>,
-    pub attr: Attr,
+    pub attr: AttributeMap,
 }
 
 #[derive(Clone, Debug)]
 pub struct Element {
     pub indices: DVector<usize>,
-    pub attr: Attr,
+    pub attr: AttributeMap,
 }
 
 #[derive(Clone, Debug)]
 pub struct Vector {
     pub components: DVector<f64>,
-    pub attr: Attr,
+    pub attr: AttributeMap,
 }
 
 macro_rules! impl_read_entity {
     ($target:ident) => {
         impl<'m> ReadEntity for &'m $target {
-            fn attr(&self, name: &AttrName) -> Result<Option<Cow<str>>, Error> {
-                Ok(self.attr.get(name).map(|s| s.into()))
-            }
+            type Attributes = AttributeMap;
 
-            fn attr_at(&self, index: usize) -> Result<Option<(Cow<AttrName>, Cow<str>)>, Error> {
-                Ok(self
-                    .attr
-                    .get_at(index)
-                    .map(|(n, v)| (Cow::Borrowed(n), Cow::Borrowed(v.as_ref()))))
+            fn attributes(&self) -> Cow<AttributeMap> {
+                Cow::Borrowed(&self.attr)
             }
         }
     };
@@ -146,11 +232,6 @@ impl Mesh {
     pub fn metadata(&self) -> MeshMetadata {
         SerializableMesh::metadata(&self)
     }
-
-    /*
-    pub fn print_full(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    }
-    */
 }
 
 impl<'m> SerializableMesh for &'m Mesh {
@@ -243,6 +324,7 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
     where
         R: ReadEntity,
     {
+        let attr = AttributeContainer::from(entity);
         let attr = Attr::from_entity(entity)?;
         impl_de_entity(Entity { attr }, &mut self.others, group_data)
     }
@@ -280,3 +362,4 @@ impl<'a> DeserializeMesh for &'a mut Mesh {
         impl_de_entity(Vector { attr, components }, &mut self.vectors, group_data)
     }
 }
+*/

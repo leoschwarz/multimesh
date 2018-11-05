@@ -5,7 +5,7 @@
 
 // TODO: How could this work for user defined formats?
 
-use data::GroupKind;
+use data::EntityKind;
 use std::borrow::Cow;
 
 pub(crate) const NODES_MEDIT: &'static [&'static str] = &[
@@ -37,18 +37,18 @@ pub(crate) const OTHER_MEDIT: &'static [&'static str] = &[
 pub struct Name {
     name: String,
     format: Format,
-    kind: GroupKind,
+    kind: EntityKind,
 }
 
 impl Name {
-    pub fn parse(s: String, format: Format, kind: GroupKind) -> Option<Self> {
+    pub fn parse(s: String, format: Format, kind: EntityKind) -> Option<Self> {
         match format {
             Format::Medit => {
                 let ref whitelist = match kind {
-                    GroupKind::Node => NODES_MEDIT,
-                    GroupKind::Element => ELEMENTS_MEDIT,
-                    GroupKind::Vector => VECTORS_MEDIT,
-                    GroupKind::Other => OTHER_MEDIT,
+                    EntityKind::Node => NODES_MEDIT,
+                    EntityKind::Element => ELEMENTS_MEDIT,
+                    EntityKind::Vector => VECTORS_MEDIT,
+                    EntityKind::Other => OTHER_MEDIT,
                 };
 
                 if !whitelist.contains(&s.as_str()) {
@@ -68,7 +68,7 @@ impl Name {
         })
     }
 
-    pub fn get_original(&self) -> (&str, Format, GroupKind) {
+    pub fn get_original(&self) -> (&str, Format, EntityKind) {
         (self.name.as_ref(), self.format, self.kind)
     }
 
@@ -96,8 +96,8 @@ mod tests {
 
     #[test]
     fn parse_element_name() {
-        let name1 = Name::parse("Triangles".into(), Format::Medit, GroupKind::Element);
-        let name2 = Name::parse("Potato".into(), Format::Medit, GroupKind::Element);
+        let name1 = Name::parse("Triangles".into(), Format::Medit, EntityKind::Element);
+        let name2 = Name::parse("Potato".into(), Format::Medit, EntityKind::Element);
         assert!(name1.is_some());
         assert!(name2.is_none());
         let name = name1.unwrap();

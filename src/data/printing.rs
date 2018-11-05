@@ -1,9 +1,10 @@
 //! Contains utils to print meshes.
 use prettytable::{self, cell, row, Cell, Row, Table};
-use ser::{SerializableGroup, SerializableMesh};
+use data::GetMesh;
 use std::io::{self, Write};
+use std::collections::HashSet;
 
-pub fn print_metadata<M: SerializableMesh>(mesh: M) -> io::Result<()> {
+pub fn print_metadata<M: GetMesh>(mesh: M) -> io::Result<()> {
     write_metadata(mesh, &mut ::std::io::stdout())
 }
 
@@ -25,18 +26,30 @@ fn write_metadata_groups<G, GI, GII, W>(header: &str, groups: G, mut w: W) -> io
 where
     G: Iterator<Item = GI>,
     GI: SerializableGroup<Item = GII>,
+    GII: ReadEntity,
     W: Write,
 {
     writeln!(w, "{}:", header)?;
     let mut table = Table::new();
-    table.add_row(row!["#", "name", "len"]);
+    table.set_titles(row!["#", "name", "len", "attrs"]);
     let mut i = 0;
     for group in groups {
+        // Collect all available attrs.
         let gd = group.metadata();
-        table.add_row(row![i, gd.name().get_original().0, gd.len()]);
+        let mut attr_names = HashSet::new();
+        for i_item in 0..gd.len() {
+            let item = group.item_at(i_item).expect("broken invariant");
+            let n_attrs = item.attrs_len();
+        }
+
+        table.add_row(row![i, gd.name().get_original().0, gd.len(), ""]);
         i += 1;
     }
-    table.set_format(prettytable::format::consts::FORMAT_BOX_CHARS.clone());
-    table.print(&mut w);
+    if i > 0 {
+        table.set_format(prettytable::format::consts::FORMAT_NO_LINESEP_WITH_TITLE.clone());
+        table.print(&mut w);
+    } else {
+        writeln!(w, "There are no such groups.")?;
+    }
     Ok(())
 }

@@ -20,12 +20,6 @@ extern crate regex;
 
 mod util;
 
-/// Deserialization.
-pub mod de;
-
-/// Serialization.
-pub mod ser;
-
 pub mod data;
 pub mod format;
 

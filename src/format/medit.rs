@@ -3,10 +3,10 @@
 //! Defined in [ISSN 0249-0803](https://www.ljll.math.upmc.fr/frey/publications/RT-0253.pdf) (PDF).
 
 use data::{
-    attribute::Attr,
+    attribute::{AttributeName},
     face_vertex,
     mesh::{ReadElement, ReadNode},
-    AttrName, GroupData, GroupKind,
+    GroupData, GroupKind,
 };
 use de::{DeserializeMesh, Deserializer};
 use error::Error;
