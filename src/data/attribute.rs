@@ -35,7 +35,7 @@ pub trait AttributeContainer {
     fn iter<'a>(&'a self) -> Box<Iterator<Item=(&'a AttributeName, &'a String)> + 'a>;
 
     fn iter_names<'a>(&'a self) -> Box<Iterator<Item=&'a AttributeName> + 'a> {
-        Box::new(self.iter().map(|(k,v)| k))
+        Box::new(self.iter().map(|(k,_)| k))
     }
 }
 

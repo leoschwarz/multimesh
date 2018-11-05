@@ -5,51 +5,45 @@ pub mod attribute;
 //pub mod printing;
 
 pub mod face_vertex;
+pub mod entity;
+
+pub use self::entity::{Entity, EntityBox, EntityKind};
 
 use error::Error;
 use std::borrow::Cow;
 use data::attribute::AttributeContainer;
+use std::fmt::Debug;
+use data::attribute::AttributeMap;
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Copy)]
-pub enum EntityKind {
-    /// A mesh node/vertex.
-    Node,
-    /// A mesh element/face/volume.
-    Element,
-    /// A vector.
-    Vector,
-    /// Any other entity which does not fit into the other categories.
-    Other,
-}
-
-pub struct Entity {
-
-}
 
 pub trait SetMeshGroup<'m> {
+    type Entity: Entity;
+
     /// Will not necessarily be called by every deserializer, but if it is called, then the contract
     /// is that the size will not change anymore.
-    fn reserve(&mut self, num: usize) -> Result<(), Error> { Ok(()) }
+    fn reserve(&mut self, _num: usize) -> Result<(), Error> { Ok(()) }
 
-    fn add_entity(&mut self, entity: Entity) -> Result<(), Error>;
+    fn add_entity(&mut self, entity: Self::Entity) -> Result<(), Error>;
 
     fn end(self) -> Result<(), Error>;
 }
 
 pub trait SetMesh<'m> {
-    type GroupSetter: SetMeshGroup<'m> + 'm;
+    type Entity: Entity;
+    type GroupSetter: SetMeshGroup<'m, Entity=Self::Entity> + 'm;
 
     fn set_dimension(&'m mut self, dim: u8);
 
     fn add_group(&'m mut self, name: Name, kind: EntityKind) -> Result<Self::GroupSetter, Error>;
 }
 
-pub trait GetMeshGroup: Iterator<Item=Entity> {
+pub trait GetMeshGroup: Iterator {
     fn metadata(&self) -> GroupMetadata;
 }
 
 pub trait GetMesh<'m> {
-    type GroupReader: GetMeshGroup + 'm;
+    type Entity;
+    type GroupReader: GetMeshGroup<Item=Self::Entity> + 'm;
     type GroupReaders: Iterator<Item=&'m Self::GroupReader> + 'm;
 
     fn metadata(&self) -> MeshMetadata;
