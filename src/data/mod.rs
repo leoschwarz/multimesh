@@ -4,22 +4,21 @@ use std::hash::{Hash, Hasher};
 pub mod attribute;
 //pub mod printing;
 
-pub mod face_vertex;
 pub mod entity;
+pub mod face_vertex;
 
 pub use self::entity::{Entity, EntityBox, EntityKind};
 
+use data::attribute::{AttributeContainer, AttributeMap};
 use error::Error;
-use std::borrow::Cow;
-use data::attribute::AttributeContainer;
-use std::fmt::Debug;
-use data::attribute::AttributeMap;
-
+use std::{borrow::Cow, fmt::Debug};
 
 pub trait SetMeshGroup<'m> {
     /// Will not necessarily be called by every deserializer, but if it is called, then the contract
     /// is that the size will not change anymore.
-    fn reserve(&mut self, _num: usize) -> Result<(), Error> { Ok(()) }
+    fn reserve(&mut self, _num: usize) -> Result<(), Error> {
+        Ok(())
+    }
 
     fn add_entity<E: Entity>(&mut self, entity: E) -> Result<(), Error>;
 
@@ -42,13 +41,12 @@ pub trait GetMeshGroup: Iterator {
 
 pub trait GetMesh<'m> {
     type Entity;
-    type GroupReader: GetMeshGroup<Item=Self::Entity> + 'm;
-    type GroupReaders: Iterator<Item=Self::GroupReader> + 'm;
+    type GroupReader: GetMeshGroup<Item = Self::Entity> + 'm;
+    type GroupReaders: Iterator<Item = Self::GroupReader> + 'm;
 
     fn metadata(&self) -> MeshMetadata;
     fn groups(&self) -> Self::GroupReaders;
 }
-
 
 #[derive(Clone, Debug)]
 pub struct MeshMetadata {
@@ -63,8 +61,6 @@ impl MeshMetadata {
         self.dimension
     }
 }
-
-
 
 pub struct GroupMetadata {
     // TODO: builder/constructor or public

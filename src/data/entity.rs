@@ -1,7 +1,5 @@
+use data::attribute::{AttributeContainer, AttributeContainerMut, AttributeMap};
 use std::fmt::Debug;
-use data::attribute::AttributeContainer;
-use data::attribute::AttributeContainerMut;
-use data::attribute::AttributeMap;
 
 pub trait Entity: Clone + Debug {
     type Attr: AttributeContainer;
@@ -10,7 +8,7 @@ pub trait Entity: Clone + Debug {
     fn attributes(&self) -> &Self::Attr;
 }
 
-pub trait EntityMut<Attr: AttributeContainerMut>: Entity<Attr=Attr> {
+pub trait EntityMut<Attr: AttributeContainerMut>: Entity<Attr = Attr> {
     fn attributes_mut(&mut self) -> &mut Attr;
 }
 
@@ -44,8 +42,7 @@ impl Entity for EntityBox {
     }
 }
 
-impl EntityMut<AttributeMap> for EntityBox
-{
+impl EntityMut<AttributeMap> for EntityBox {
     fn attributes_mut(&mut self) -> &mut AttributeMap {
         &mut self.attr
     }
@@ -54,12 +51,12 @@ impl EntityMut<AttributeMap> for EntityBox
 impl EntityBox {
     pub fn from_entity<E, A>(e: &E) -> Self
     where
-        E: Entity<Attr=A>,
-        A: AttributeContainer
+        E: Entity<Attr = A>,
+        A: AttributeContainer,
     {
         EntityBox {
             kind: e.kind(),
-            attr: AttributeMap::from_container(e.attributes())
+            attr: AttributeMap::from_container(e.attributes()),
         }
     }
 }

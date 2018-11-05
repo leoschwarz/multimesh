@@ -1,7 +1,9 @@
 use error::Error;
-use std::collections::{BTreeMap, btree_map};
-use std::iter::FromIterator;
-use std::fmt::Debug;
+use std::{
+    collections::{btree_map, BTreeMap},
+    fmt::Debug,
+    iter::FromIterator,
+};
 
 /// The name of an attribute.
 ///
@@ -33,10 +35,10 @@ pub trait AttributeContainer: Clone + Debug {
     /// Get the attribute with the specified name.
     fn get(&self, name: &AttributeName) -> Option<&String>;
 
-    fn iter<'a>(&'a self) -> Box<Iterator<Item=(&'a AttributeName, &'a String)> + 'a>;
+    fn iter<'a>(&'a self) -> Box<Iterator<Item = (&'a AttributeName, &'a String)> + 'a>;
 
-    fn iter_names<'a>(&'a self) -> Box<Iterator<Item=&'a AttributeName> + 'a> {
-        Box::new(self.iter().map(|(k,_)| k))
+    fn iter_names<'a>(&'a self) -> Box<Iterator<Item = &'a AttributeName> + 'a> {
+        Box::new(self.iter().map(|(k, _)| k))
     }
 }
 
@@ -59,11 +61,11 @@ impl AttributeContainer for AttributeMap {
         self.data.get(name)
     }
 
-    fn iter<'a>(&'a self) -> Box<Iterator<Item=(&'a AttributeName, &'a String)> + 'a> {
+    fn iter<'a>(&'a self) -> Box<Iterator<Item = (&'a AttributeName, &'a String)> + 'a> {
         Box::new(self.data.iter())
     }
 
-    fn iter_names<'a>(&'a self) -> Box<Iterator<Item=&'a AttributeName> + 'a> {
+    fn iter_names<'a>(&'a self) -> Box<Iterator<Item = &'a AttributeName> + 'a> {
         Box::new(self.data.keys())
     }
 }
@@ -80,9 +82,7 @@ impl AttributeMap {
         for (k, v) in c.iter() {
             data.insert(k.clone(), v.clone());
         }
-        AttributeMap {
-            data
-        }
+        AttributeMap { data }
     }
 }
 
@@ -90,7 +90,7 @@ impl AttributeName {
     pub fn is_index(&self) -> bool {
         match *self {
             AttributeName::Index(_) => true,
-            AttributeName::Key(_) => false
+            AttributeName::Key(_) => false,
         }
     }
 

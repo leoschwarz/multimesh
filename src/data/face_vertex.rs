@@ -3,19 +3,13 @@
 
 use data::{
     attribute::{AttributeMap, AttributeName},
-    *,
+    Entity, EntityBox, EntityKind, GetMesh, GetMeshGroup, GroupMetadata, MeshMetadata, SetMesh,
+    SetMeshGroup, *,
 };
 use error::Error;
 use nalgebra::DVector;
-use std::{borrow::Cow, fmt};
-use data::SetMesh;
-use data::EntityKind;
 use naming::Name;
-use data::SetMeshGroup;
-use data::{Entity, EntityBox};
-use data::{GetMesh, GetMeshGroup};
-use data::MeshMetadata;
-use data::GroupMetadata;
+use std::{borrow::Cow, fmt};
 
 /// A mesh represented in face-vertex form, referred to as elements and nodes in the following.
 ///
@@ -52,7 +46,7 @@ pub struct MeshGroupSetter<'m> {
     name: Name,
     kind: EntityKind,
     mesh: &'m mut Mesh,
-    entities: Vec<EntityBox>
+    entities: Vec<EntityBox>,
 }
 
 impl<'m> SetMeshGroup<'m> for MeshGroupSetter<'m> {
@@ -71,7 +65,7 @@ impl<'m> SetMeshGroup<'m> for MeshGroupSetter<'m> {
             EntityKind::Node => self.mesh.nodes.push(group),
             EntityKind::Element => self.mesh.elements.push(group),
             EntityKind::Vector => self.mesh.vectors.push(group),
-            EntityKind::Other => self.mesh.others.push(group)
+            EntityKind::Other => self.mesh.others.push(group),
         }
         Ok(())
     }
@@ -87,7 +81,7 @@ pub struct EntityGroup {
 impl<'m> GetMesh<'m> for &'m Mesh {
     type Entity = EntityBox;
     type GroupReader = MeshGroupReader<'m>;
-    type GroupReaders = Box<Iterator<Item=Self::GroupReader> + 'm>;
+    type GroupReaders = Box<Iterator<Item = Self::GroupReader> + 'm>;
 
     fn metadata(&self) -> MeshMetadata {
         MeshMetadata {
@@ -123,4 +117,3 @@ impl<'m> Iterator for MeshGroupReader<'m> {
         unimplemented!()
     }
 }
-
