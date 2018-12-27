@@ -1,7 +1,7 @@
 use crate::{
     data::entity::{Entity, EntityKind},
     error::Error,
-    naming::Name,
+    format::naming::Name,
 };
 
 pub trait SetMeshGroup<'m> {

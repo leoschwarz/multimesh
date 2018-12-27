@@ -1,6 +1,7 @@
 //! Face-vertex mesh representation.
 // TODO(blocked): Const-generics for node and element items?
 
+use crate::format::naming::Name;
 use data::{
     attribute::{AttributeMap, AttributeName},
     Entity, EntityBox, EntityKind, GetMesh, GetMeshGroup, GroupMetadata, MeshMetadata, SetMesh,
@@ -8,7 +9,6 @@ use data::{
 };
 use error::Error;
 use nalgebra::DVector;
-use naming::Name;
 use std::{borrow::Cow, fmt};
 
 /// A mesh represented in face-vertex form, referred to as elements and nodes in the following.

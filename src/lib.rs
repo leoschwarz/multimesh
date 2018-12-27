@@ -21,8 +21,5 @@ extern crate regex;
 mod util;
 
 pub mod data;
-pub mod format;
-
-pub mod naming;
-
 pub mod error;
+pub mod format;

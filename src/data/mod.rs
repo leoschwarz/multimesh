@@ -4,7 +4,7 @@
 //! making it possible to use multimesh with any Rust representation of meshes
 //! you want, as long as they implement the necessary traits.
 
-use naming::Name;
+use crate::format::naming::Name;
 use std::hash::{Hash, Hasher};
 
 pub mod attribute;

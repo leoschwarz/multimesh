@@ -3,7 +3,7 @@
 //!
 //! For example what is called `line` in one format could be called `Edge` in another.
 
-// TODO: How could this work for user defined formats?
+// TODO: This should be merged to support the registry.
 
 use data::EntityKind;
 use std::borrow::Cow;
