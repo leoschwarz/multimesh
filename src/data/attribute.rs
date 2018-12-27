@@ -47,6 +47,10 @@ pub trait AttributeContainerMut: AttributeContainer {
     fn set(&mut self, name: AttributeName, value: String);
 }
 
+/// Default implementation of an [AttributeContainerMut].
+///
+/// Currently this is not optimized for real world performance, and
+/// no guarantees about asymptotic costs are made.
 #[derive(Clone, Debug, Default)]
 pub struct AttributeMap {
     data: BTreeMap<AttributeName, String>,

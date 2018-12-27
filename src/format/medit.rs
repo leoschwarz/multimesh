@@ -8,11 +8,9 @@ use data::{
     mesh::{ReadElement, ReadNode},
     GroupData, GroupKind,
 };
-use de::{DeserializeMesh, Deserializer};
 use error::Error;
 use nalgebra::DVector;
 use naming::{Format, Name};
-use ser::{SerializableGroup, SerializableMesh, Serializer};
 use std::{
     borrow::Cow,
     io::{Read, Write},
