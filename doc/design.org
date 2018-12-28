@@ -1,0 +1,25 @@
+*Status*: This document is a WIP description of the design goals and tradeoffs of the multimesh crate.
+
+* Design Goals
+** Abstraction over mesh representation
+Abstracting over the actual representation of the mesh will allow seamless interoperation of multimesh with various other crates. The idea is that users are able to implement the =GetMesh= and =SetMesh= traits for their own traits and be able to use all other code based on these traits.
+
+For convenience we will provide at least one mesh representation in-crate (currently face-vertex), however this decision might be changed prior to 1.0 release.
+
+** Extensibility by other crates
+The aim is to provide as many formats in one place. However some formats might require more expensive dependencies and be optional, or be developed completely independent of the main repo. It should be possible to develop support for new formats from other crates also.
+
+However there are some caveats imposing serious limitations on what is actually possible.
+
+** Group name conversions
+The same group of entities can have very different names between different formats. So a goal is to provide a mapping between the different names. However this functionality should be optional as sometimes it might be desirable to preserve the original names. *Problem*: some formats don't actually have well-defined names for their groups at all.
+
+** Efficient
+While we don't aim (yet) for extreme performance, code should not be made unecessarily slower than it has to be. If nothing else it should be as memory efficient as possible. This is also supported by the abstraction over mesh representation: if a particular representation does not require certain information it can simply be discarded while it's read without having to read everything into memory first.
+
+* TODO Tradeoffs
+** Extensibility by other crates
+Originally I've been planning to make it possible to implement extension of multimesh in other crates. However the main issue is that as of now I haven't figured out if there is a way at all to have some registry object for all implementations of a format, when these types implement a trait containing generic methods. (You cannot box trait objects with generic methods.)
+
+So if users want to use other formats, they will have to supply the relevant functions manually. Maybe this could be made relatively ergonomic by simply having to specify a single type argument or object, but would still be more work than with meshio. Also it would not solve the problem of translating group names between formats.
+** Translating group names between formats
